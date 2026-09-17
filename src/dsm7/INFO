@@ -1,0 +1,11 @@
+package="SpotConnect"
+version=#VERSION#
+description="Turn UPnP/Sonos and AirPlay speakers into real Spotify Connect devices. Your NAS holds the stream, so the music keeps playing after your phone leaves - and Android, Windows and Linux can control it too."
+maintainer="philippe44"
+maintainer_url="https://github.com/philippe44/SpotConnect"
+distributor="eizedev"
+distributor_url="https://github.com/eizedev/SpotConnect-Synology"
+helpurl="https://github.com/eizedev/SpotConnect-Synology#readme"
+support_url="https://github.com/eizedev/SpotConnect-Synology/issues"
+arch="#INFO_ARCH#"
+os_min_ver="#INFO_FIRMWARE#"

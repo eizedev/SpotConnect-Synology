@@ -1,0 +1,92 @@
+#!/bin/sh
+
+if [ "$SYNOPKG_PKG_STATUS" = "INSTALL" ]; then
+    SPOTCONNECT_USER="$(echo "${SYNOPKG_PKGNAME}" | awk '{print tolower($0)}')"
+    SPOTCONNECT_CONFIG="${SYNOPKG_PKGDEST}/spotconnect.conf"
+    CREDENTIALS_DIR="${SYNOPKG_PKGDEST}/credentials"
+    LOG="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.log"
+
+    echo "[$(date +'%T')] #### Start postinst... ####" >>"${LOG}"
+
+    # Unlike AirConnect-Synology's postinst, which repeats a near-identical
+    # config block once per wizard choice, the choice only decides two
+    # values here. Everything else is written once, so the two programs
+    # cannot drift apart.
+    SPOTUPNP_ENABLED=0
+    SPOTRAOP_ENABLED=0
+    # pkgwizard_* variables are set by DSM from WIZARD_UIFILES answers.
+    # shellcheck disable=SC2154
+    if [ "${pkgwizard_binaries_spotupnp}" = "true" ]; then
+        SPOTUPNP_ENABLED=1
+    elif [ "${pkgwizard_binaries_spotraop}" = "true" ]; then
+        SPOTRAOP_ENABLED=1
+    else
+        SPOTUPNP_ENABLED=1
+        SPOTRAOP_ENABLED=1
+    fi
+
+    # Storing reusable Spotify tokens is what keeps a speaker registered
+    # with Spotify's servers between sessions - without it the bridge only
+    # ever appears via local ZeroConf discovery. No Spotify password is
+    # involved either way; see WIZARD_UIFILES/install_uifile.sh.
+    # shellcheck disable=SC2154
+    if [ "${pkgwizard_store_credentials}" = "false" ]; then
+        CREDENTIALS_ENABLED=0
+    else
+        CREDENTIALS_ENABLED=1
+    fi
+
+    echo "[$(date +'%T')] Creating config file at \"${SPOTCONNECT_CONFIG}\"" >>"${LOG}"
+
+    # Port defaults are chosen to not collide with AirConnect-Synology on
+    # the same NAS: airupnp defaults to UPnP port 49154 with HTTP range
+    # 49155:128 (so 49155-49282). These start well above that. spotupnp's
+    # UPnP port must also be above pupnp's own default of 49152.
+    # PROVISIONAL, pending hardware verification (see doc/): SPOTUPNP_CODEC,
+    # SPOTUPNP_CONTENTLENGTH_MODE and the rate of 320 are the values we
+    # expect to be right, not values measured on a device yet.
+    # shellcheck disable=SC2154
+    cat >>"${SPOTCONNECT_CONFIG}" <<EOF
+SYNO_IP="${pkgwizard_ip}"
+
+SPOTUPNP_ENABLED=${SPOTUPNP_ENABLED}
+SPOTUPNP_PORT="${pkgwizard_spotupnp_port}"
+SPOTUPNP_PORTRANGE="49301:128"
+SPOTUPNP_CODEC="flc"
+SPOTUPNP_CONTENTLENGTH_MODE=0
+SPOTUPNP_RATE=320
+SPOTUPNP_NAME_FORMAT="%s+"
+SPOTUPNP_LOGLEVEL="all=info"
+
+SPOTRAOP_ENABLED=${SPOTRAOP_ENABLED}
+SPOTRAOP_PORTRANGE="49430:128"
+SPOTRAOP_CODEC="alac"
+SPOTRAOP_RATE=320
+SPOTRAOP_NAME_FORMAT="%s+"
+SPOTRAOP_LOGLEVEL="all=info"
+
+SPOTCONNECT_CREDENTIALS_ENABLED=${CREDENTIALS_ENABLED}
+EOF
+
+    echo "[$(date +'%T')] spotupnp enabled: ${SPOTUPNP_ENABLED}, spotraop enabled: ${SPOTRAOP_ENABLED}, store credentials: ${CREDENTIALS_ENABLED}" >>"${LOG}"
+
+    # Upstream writes spotupnp-XXXXXXXX.json / spotraop-XXXXXXXX.json with a
+    # plain fopen(...,"w") - no chmod, no umask - so those files land
+    # world-readable even though they hold reusable Spotify auth tokens. We
+    # cannot change how upstream writes them, but we decide which directory
+    # they land in, so restrict the directory instead: 0700, owned by the
+    # package user the daemons run as (conf/privilege, "run-as": "package").
+    # That needs no root, which matters because DSM 7 refuses to install a
+    # package whose privilege config lets a script run as root.
+    #
+    # The path is derived, not a config key, on purpose: making it settable
+    # would invite pointing it at a shared folder, which is the one place
+    # these files must never be.
+    echo "[$(date +'%T')] Creating credentials directory \"${CREDENTIALS_DIR}\" (0700)" >>"${LOG}"
+    mkdir -p "${CREDENTIALS_DIR}"
+    chmod 700 "${CREDENTIALS_DIR}"
+
+    echo "[$(date +'%T')] #### Done postinst ####" >>"${LOG}"
+fi
+
+exit 0

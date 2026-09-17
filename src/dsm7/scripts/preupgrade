@@ -1,0 +1,29 @@
+#!/bin/sh
+
+SPOTCONNECT_USER="$(echo "${SYNOPKG_PKGNAME}" | awk '{print tolower($0)}')"
+LOG="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.log"
+
+echo "[$(date +'%T')] #### Start preupgrade... ####" >>"${LOG}"
+
+# An upgrade replaces the whole package directory, so anything that must
+# survive it has to be parked in SYNOPKG_TEMP_UPGRADE_FOLDER first.
+cp -f "${SYNOPKG_PKGDEST}/spotconnect.conf" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>"${LOG}" || true
+
+# The credential files matter as much as the config here: losing them would
+# quietly drop every speaker back to discovery-only mode, and the user would
+# have to play to each one again from a Spotify app to get them back. -a
+# preserves the restrictive directory mode along the way.
+if [ -d "${SYNOPKG_PKGDEST}/credentials" ]; then
+    cp -a "${SYNOPKG_PKGDEST}/credentials" "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" 2>>"${LOG}" || true
+fi
+
+# Custom config.xml files, if the user placed any.
+for f in config-upnp.xml config-raop.xml; do
+    if [ -f "${SYNOPKG_PKGDEST}/${f}" ]; then
+        cp -f "${SYNOPKG_PKGDEST}/${f}" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>"${LOG}" || true
+    fi
+done
+
+echo "[$(date +'%T')] #### Done preupgrade ####" >>"${LOG}"
+
+exit 0

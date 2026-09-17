@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ "$SYNOPKG_PKG_STATUS" = "UNINSTALL" ]; then
+    # Uninstalling removes the package directory anyway, so this is belt and
+    # braces - but these files hold reusable Spotify auth tokens, and secrets
+    # are worth deleting explicitly rather than by side effect.
+    CREDENTIALS_DIR="${SYNOPKG_PKGDEST}/credentials"
+    if [ -d "${CREDENTIALS_DIR}" ]; then
+        rm -f "${CREDENTIALS_DIR}"/*.json 2>/dev/null || true
+        rmdir "${CREDENTIALS_DIR}" 2>/dev/null || true
+    fi
+fi
+
+exit 0
