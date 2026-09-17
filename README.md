@@ -18,13 +18,18 @@ Your NAS holds the stream, not your phone — so the music keeps playing when yo
 of the door, and anyone in the house can take over from any Spotify app, Android
 included.
 
-> **Pre-release.** Verified on a DS923+ (DSM 7.4.1): both bridges start, speakers appear
-> individually in Spotify, playback works, control transfers between devices, and it runs
-> alongside AirConnect without conflict. Not yet verified: playback survival when the
-> controlling phone leaves the network, whether Spotify Free works, and CPU cost on older
-> models. Two of the defaults below are still marked _provisional_ for that reason. Older
-> devices may not be able to run this at all — see
-> [Which package do I need?](#which-package-do-i-need).
+> **No release published yet.** The package builds and runs, but the first release is
+> being held until there is word on
+> [upstream #78](https://github.com/philippe44/SpotConnect/issues/78) — that issue decides
+> whether older Synology devices can run this at all, and it would be better for the first
+> release to cover the whole range than a slice of it. In the meantime you can
+> [build it yourself](doc/BUILD.md), or watch the repository to hear when it lands.
+>
+> **What is verified:** a DS923+ (DSM 7.4.1) runs both bridges, speakers appear
+> individually in Spotify, playback works, control transfers between devices, playback
+> survives the controlling phone going offline, and it runs alongside AirConnect without
+> conflict. **Not yet verified:** whether Spotify Free works, and CPU cost on older
+> models — the two defaults marked _provisional_ below depend on the latter.
 
 ## Table of contents
 
@@ -149,7 +154,8 @@ the same way a Spotify Connect speaker you bought would.
    page — or just try `x86_64` first if you have any recent Intel/AMD-based NAS, which is
    by far the most common case.
 2. Download the matching `SpotConnect-dsm7-<architecture>-<version>.spk` from the
-   [latest release](https://github.com/eizedev/SpotConnect-Synology/releases/latest).
+   [latest release](https://github.com/eizedev/SpotConnect-Synology/releases/latest) —
+   or, until the first one is published, [build it yourself](doc/BUILD.md).
 3. Install it (see [Install](#install)).
 
 **Running a Synology Router (SRM)?** Use the `arm` package.
