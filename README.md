@@ -171,20 +171,44 @@ the same way a Spotify Connect speaker you bought would.
 2. Click **Manual Install** and upload the `.spk` file.
 3. DSM will warn that the publisher is unknown — the package is not signed with a
    Synology developer certificate. Continue.
-4. In the wizard, choose which programs to install:
-   - **spotupnp** for UPnP/DLNA speakers and network receivers
-   - **spotraop** for AirPlay receivers
-   - or both, which is the default
-5. Confirm the IP address (pre-filled with your NAS's primary address) and the UPnP port.
-6. Leave **Keep my speakers signed in** checked unless you have a reason not to.
+4. Choose which programs to install. If you are not sure, keep the default and install
+   both; each one simply ignores speakers that are not its kind.
+
+   ![Choosing which bridges to install](doc/res/install_selection.png)
+
+5. Confirm the address to bind to and the UPnP port. Both are pre-filled — the IP with
+   your NAS's primary address, the port with a value chosen to stay clear of AirConnect
+   on the same NAS.
+
+   ![Connection properties](doc/res/install_connection.png)
+
+6. Leave **Keep my speakers signed in** ticked unless you have a reason not to. This is
+   what lets a speaker stay in your Spotify device list when no Spotify app is nearby.
+   No password is involved — see [Spotify sign-ins](#spotify-sign-ins).
+
+   ![Keeping your speakers signed in](doc/res/install_signin.png)
+
 7. Finish, and start the package if it did not start by itself.
 
-Then open Spotify, play something to your speaker once, and it is set up — see
+Then open Spotify, play something to your speaker once, and you are done — see
 [Spotify sign-ins](#spotify-sign-ins) for why that one playback matters.
+
+**If it will not start**, the package says why in Package Center and in its own log,
+rather than leaving you with "Failed to start". The most likely reason on an older device
+is covered under [Which package do I need?](#which-package-do-i-need).
 
 **Logs:** `synopkg log SpotConnect`, or read
 `/var/packages/SpotConnect/target/log/spotconnect.log` over SSH. The log rotates at 50 MB
 and one backup is kept.
+
+### Uninstalling
+
+Everything this package created lives inside its own package folder, so removing the
+package removes all of it — settings, log, any custom `config-*.xml`, and the stored
+Spotify tokens. No shared folder is left behind, and your speakers are not changed in any
+way; they simply stop appearing as Spotify Connect devices.
+
+![What uninstalling removes](doc/res/uninstall_notice.png)
 
 ## Spotify sign-ins
 
