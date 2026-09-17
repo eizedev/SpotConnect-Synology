@@ -18,13 +18,18 @@ Your NAS holds the stream, not your phone — so the music keeps playing when yo
 of the door, and anyone in the house can take over from any Spotify app, Android
 included.
 
-> **Pre-release.** Verified on a DS923+ (DSM 7.4.1): both bridges start, speakers appear
-> individually in Spotify, playback works, control transfers between devices, and it runs
-> alongside AirConnect without conflict. Not yet verified: playback survival when the
-> controlling phone leaves the network, whether Spotify Free works, and CPU cost on older
-> models. Two of the defaults below are still marked _provisional_ for that reason. Older
-> devices may not be able to run this at all — see
-> [Which package do I need?](#which-package-do-i-need).
+> **No release published yet.** The package builds and runs, but the first release is
+> being held until there is word on
+> [upstream #78](https://github.com/philippe44/SpotConnect/issues/78) — that issue decides
+> whether older Synology devices can run this at all, and it would be better for the first
+> release to cover the whole range than a slice of it. In the meantime you can
+> [build it yourself](doc/BUILD.md), or watch the repository to hear when it lands.
+>
+> **What is verified:** a DS923+ (DSM 7.4.1) runs both bridges, speakers appear
+> individually in Spotify, playback works, control transfers between devices, playback
+> survives the controlling phone going offline, and it runs alongside AirConnect without
+> conflict. **Not yet verified:** whether Spotify Free works, and CPU cost on older
+> models — the two defaults marked _provisional_ below depend on the latter.
 
 ## Table of contents
 
@@ -149,7 +154,8 @@ the same way a Spotify Connect speaker you bought would.
    page — or just try `x86_64` first if you have any recent Intel/AMD-based NAS, which is
    by far the most common case.
 2. Download the matching `SpotConnect-dsm7-<architecture>-<version>.spk` from the
-   [latest release](https://github.com/eizedev/SpotConnect-Synology/releases/latest).
+   [latest release](https://github.com/eizedev/SpotConnect-Synology/releases/latest) —
+   or, until the first one is published, [build it yourself](doc/BUILD.md).
 3. Install it (see [Install](#install)).
 
 **Running a Synology Router (SRM)?** Use the `arm` package.
@@ -171,20 +177,44 @@ the same way a Spotify Connect speaker you bought would.
 2. Click **Manual Install** and upload the `.spk` file.
 3. DSM will warn that the publisher is unknown — the package is not signed with a
    Synology developer certificate. Continue.
-4. In the wizard, choose which programs to install:
-   - **spotupnp** for UPnP/DLNA speakers and network receivers
-   - **spotraop** for AirPlay receivers
-   - or both, which is the default
-5. Confirm the IP address (pre-filled with your NAS's primary address) and the UPnP port.
-6. Leave **Keep my speakers signed in** checked unless you have a reason not to.
+4. Choose which programs to install. If you are not sure, keep the default and install
+   both; each one simply ignores speakers that are not its kind.
+
+   ![Choosing which bridges to install](doc/res/install_selection.png)
+
+5. Confirm the address to bind to and the UPnP port. Both are pre-filled — the IP with
+   your NAS's primary address, the port with a value chosen to stay clear of AirConnect
+   on the same NAS.
+
+   ![Connection properties](doc/res/install_connection.png)
+
+6. Leave **Keep my speakers signed in** ticked unless you have a reason not to. This is
+   what lets a speaker stay in your Spotify device list when no Spotify app is nearby.
+   No password is involved — see [Spotify sign-ins](#spotify-sign-ins).
+
+   ![Keeping your speakers signed in](doc/res/install_signin.png)
+
 7. Finish, and start the package if it did not start by itself.
 
-Then open Spotify, play something to your speaker once, and it is set up — see
+Then open Spotify, play something to your speaker once, and you are done — see
 [Spotify sign-ins](#spotify-sign-ins) for why that one playback matters.
+
+**If it will not start**, the package says why in Package Center and in its own log,
+rather than leaving you with "Failed to start". The most likely reason on an older device
+is covered under [Which package do I need?](#which-package-do-i-need).
 
 **Logs:** `synopkg log SpotConnect`, or read
 `/var/packages/SpotConnect/target/log/spotconnect.log` over SSH. The log rotates at 50 MB
 and one backup is kept.
+
+### Uninstalling
+
+Everything this package created lives inside its own package folder, so removing the
+package removes all of it — settings, log, any custom `config-*.xml`, and the stored
+Spotify tokens. No shared folder is left behind, and your speakers are not changed in any
+way; they simply stop appearing as Spotify Connect devices.
+
+![What uninstalling removes](doc/res/uninstall_notice.png)
 
 ## Spotify sign-ins
 
