@@ -1,0 +1,82 @@
+#!/bin/sh
+
+SPOTCONNECT_USER="$(echo "${SYNOPKG_PKGNAME}" | awk '{print tolower($0)}')"
+LOG="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.log"
+SPOTCONNECT_CONFIG="${SYNOPKG_PKGDEST}/spotconnect.conf"
+CREDENTIALS_DIR="${SYNOPKG_PKGDEST}/credentials"
+
+echo "[$(date +'%T')] #### Start postupgrade... ####" >>"${LOG}"
+
+cp -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/spotconnect.conf" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" || true
+
+if [ -d "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" ]; then
+    cp -a "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" "${SYNOPKG_PKGDEST}/credentials" 2>>"${LOG}" || true
+fi
+
+for f in config-upnp.xml config-raop.xml; do
+    if [ -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/${f}" ]; then
+        cp -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/${f}" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" || true
+    fi
+done
+
+# Re-assert the restrictive mode rather than trusting that the copy above
+# preserved it: these files hold reusable Spotify tokens and upstream writes
+# them with no chmod of its own.
+mkdir -p "${CREDENTIALS_DIR}" 2>>"${LOG}" || true
+chmod 700 "${CREDENTIALS_DIR}" 2>>"${LOG}" || true
+
+# One-shot action from the upgrade wizard, not a stored setting: the only way
+# to re-acquire a Spotify sign-in is to discard the old one and let the next
+# playback issue a fresh token. This is the GUI path for "I switched Spotify
+# accounts" or "this speaker stopped responding"; the alternatives are
+# reinstalling the package, or deleting the files over SSH.
+# shellcheck disable=SC2154
+if [ "${pkgwizard_forget_credentials}" = "true" ]; then
+    echo "[$(date +'%T')] Forgetting stored Spotify sign-ins on user request" >>"${LOG}"
+    rm -f "${CREDENTIALS_DIR}"/*.json 2>>"${LOG}" || true
+    echo "Stored Spotify sign-ins were cleared. Play to each speaker once from a Spotify app to sign it in again." >>"${SYNOPKG_TEMP_LOGFILE}"
+fi
+
+# Backfill keys added since the config was written, so an upgrade from an
+# older package never leaves start-stop-status reading an unset variable
+# under "set -u". Values match the defaults in postinst.
+if [ -f "${SPOTCONNECT_CONFIG}" ]; then
+    add_default() {
+        grep -Fq "$1=" "${SPOTCONNECT_CONFIG}" || {
+            echo "[$(date +'%T')] Adding missing config key $1" >>"${LOG}"
+            echo "$1=$2" >>"${SPOTCONNECT_CONFIG}"
+        }
+    }
+
+    add_default SPOTUPNP_ENABLED 1
+    add_default SPOTUPNP_PORT '"49300"'
+    add_default SPOTUPNP_PORTRANGE '"49301:128"'
+    add_default SPOTUPNP_CODEC '"flc"'
+    add_default SPOTUPNP_CONTENTLENGTH_MODE 0
+    add_default SPOTUPNP_RATE 320
+    add_default SPOTUPNP_NAME_FORMAT '"%s+"'
+    add_default SPOTUPNP_LOGLEVEL '"all=info"'
+
+    add_default SPOTRAOP_ENABLED 0
+    add_default SPOTRAOP_PORTRANGE '"49430:128"'
+    add_default SPOTRAOP_CODEC '"alac"'
+    add_default SPOTRAOP_RATE 320
+    add_default SPOTRAOP_NAME_FORMAT '"%s+"'
+    add_default SPOTRAOP_LOGLEVEL '"all=info"'
+
+    add_default SPOTCONNECT_CREDENTIALS_ENABLED 1
+
+    # SYNO_IP has no sensible default - an empty value here would make
+    # start-stop-status exit 150 with a clear message, but that is a bad
+    # experience on an upgrade, so re-detect it the same way the install
+    # wizard does.
+    grep -Fq "SYNO_IP=" "${SPOTCONNECT_CONFIG}" || {
+        DETECTED_IP=$(ip -o route get to 1.0.0.0 2>/dev/null | sed -n 's/.*src \([0-9.]\+\).*/\1/p')
+        echo "[$(date +'%T')] Adding missing SYNO_IP (detected: ${DETECTED_IP})" >>"${LOG}"
+        echo "SYNO_IP=\"${DETECTED_IP}\"" >>"${SPOTCONNECT_CONFIG}"
+    }
+fi
+
+echo "[$(date +'%T')] #### Done postupgrade ####" >>"${LOG}"
+
+exit 0

@@ -1,0 +1,202 @@
+---
+name: Upstream SpotConnect version bump
+
+# Human-in-the-loop upstream update flow, in three stages:
+#   1. check-for-update: weekly, compares the pinned version in
+#      upstream.json against philippe44/SpotConnect's latest release. If it
+#      is newer, computes the new checksum and opens a PR - never merges.
+#   2. tag: runs when a PR touching upstream.json is merged to main by a
+#      human. Updates CHANGELOG.md and pushes the next release tag.
+#   3. release: calls release.yml directly as a reusable workflow, rather
+#      than relying on the tag push to trigger it. A tag pushed with the
+#      default GITHUB_TOKEN does not trigger other workflows' `on: push:
+#      tags` - GitHub suppresses that to prevent recursive runs - so the
+#      push trigger alone would silently publish nothing.
+#
+# The version-bump PR is deliberately never auto-merged. The sibling
+# project shipped real breakage twice (its issues #106 and #107) that only
+# surfaced once users installed it, and this package has the added wrinkle
+# that upstream's builds do not run on every supported device, so a human
+# looking at what changed is worth more than the convenience.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+  workflow_dispatch:
+  pull_request:
+    types: [closed]
+    branches: [main]
+    paths:
+      - upstream.json
+
+permissions:
+  contents: read
+
+jobs:
+  check-for-update:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compare upstream release to pinned version
+        id: check
+        env:
+          # Via env rather than interpolated into the curl command line, so
+          # the token never shows up in a process listing.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_TAG=$(jq -r .tag upstream.json)
+          LATEST=$(curl -sL -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/philippe44/SpotConnect/releases/latest")
+          LATEST_TAG=$(echo "$LATEST" | jq -r .tag_name)
+
+          if [ "$LATEST_TAG" = "$CURRENT_TAG" ] || [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+            echo "Already up to date (pinned: ${CURRENT_TAG}, upstream latest: ${LATEST_TAG:-unknown})."
+            echo "update_available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "New upstream release: ${CURRENT_TAG} -> ${LATEST_TAG}"
+          ASSET_URL=$(echo "$LATEST" | jq -r '[.assets[] | select(.name | test("^SpotConnect-.*\\.zip$"))][0].browser_download_url')
+          if [ -z "$ASSET_URL" ] || [ "$ASSET_URL" = "null" ]; then
+            echo "::error::No SpotConnect-*.zip asset found in the latest upstream release."
+            exit 1
+          fi
+          ASSET_NAME=$(basename "$ASSET_URL")
+
+          curl -sL -o /tmp/upstream.zip "$ASSET_URL"
+          SHA256=$(sha256sum /tmp/upstream.zip | awk '{print $1}')
+
+          # Upstream has changed which architectures it builds before, and
+          # a silently missing binary would only surface as a build failure
+          # later. Name what is actually in the archive, in the PR, so the
+          # human reviewing it can see at a glance.
+          ARCH_LIST=$(unzip -Z1 /tmp/upstream.zip 2>/dev/null \
+            | grep -E '^spotupnp-linux-' | sed 's/^spotupnp-linux-//' | sort | tr '\n' ' ')
+          rm -f /tmp/upstream.zip
+
+          jq -n --arg version "$LATEST_TAG" --arg tag "$LATEST_TAG" \
+                --arg asset "$ASSET_NAME" --arg sha256 "$SHA256" \
+            '{version: $version, tag: $tag, asset: $asset, sha256: $sha256}' \
+            > upstream.json
+
+          UPSTREAM_NOTES=$(echo "$LATEST" | jq -r '.body // "(no release notes provided upstream)"')
+
+          {
+            echo "Bumps the pinned upstream SpotConnect version from"
+            echo "\`${CURRENT_TAG}\` to \`${LATEST_TAG}\` in \`upstream.json\`."
+            echo "The new SHA256 was computed from the downloaded release asset."
+            echo
+            echo "**This PR does not auto-merge.** Review the upstream changes, then merge"
+            echo "manually - merging tags and publishes a new SpotConnect-Synology release."
+            echo
+            echo "**Linux architectures in this upstream release:**"
+            echo "\`${ARCH_LIST}\`"
+            echo
+            echo "If that list changed, check \`src/dsm7/Makefile\` and \`doc/ARCHITECTURES.md\`"
+            echo "before merging."
+            echo
+            echo "<details>"
+            echo "<summary>Upstream release notes for ${LATEST_TAG}</summary>"
+            echo
+            echo "${UPSTREAM_NOTES}"
+            echo
+            echo "</details>"
+            echo
+            echo "Full upstream changelog: https://github.com/philippe44/SpotConnect/blob/master/CHANGELOG"
+          } > /tmp/pr_body.md
+
+          {
+            echo "update_available=true"
+            echo "old_tag=${CURRENT_TAG}"
+            echo "new_tag=${LATEST_TAG}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open PR with the version bump
+        if: steps.check.outputs.update_available == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        with:
+          # Fixed branch name on purpose: re-running before the PR is
+          # merged updates the same PR rather than piling up a new one
+          # every week.
+          branch: upstream-spotconnect-bump
+          title: "chore(upstream): bump SpotConnect to ${{ steps.check.outputs.new_tag }}"
+          commit-message: "chore(upstream): bump pinned SpotConnect to ${{ steps.check.outputs.new_tag }}"
+          body-path: /tmp/pr_body.md
+
+  tag:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.create_tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Update CHANGELOG.md and push the next release tag
+        id: create_tag
+        run: |
+          VERSION=$(jq -r .version upstream.json)
+          TAG="${VERSION}-$(date +%Y%m%d)"
+          RELEASE_DATE=$(date +%Y-%m-%d)
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag ${TAG} already exists - not pushing again. For a genuine same-day re-bump, tag manually with a disambiguating suffix."
+            exit 1
+          fi
+
+          # Whatever accumulated under [Unreleased] becomes this release's
+          # section. For a pure version bump with no packaging changes that
+          # is usually empty, so fall back to a generated line rather than
+          # publishing a release with no CHANGELOG entry at all.
+          UNRELEASED_BODY=$(awk '/^## \[Unreleased\]/{f=1;next}/^## \[/{f=0}f' CHANGELOG.md)
+          if [ -n "$(echo "$UNRELEASED_BODY" | tr -d '[:space:]')" ]; then
+            STUB=""
+          else
+            STUB="Upstream SpotConnect updated to ${VERSION}. See the [upstream CHANGELOG](https://github.com/philippe44/SpotConnect/blob/master/CHANGELOG) for details."
+          fi
+
+          awk -v tag="$TAG" -v date="$RELEASE_DATE" -v stub="$STUB" '
+            /^## \[Unreleased\]/ {
+              print
+              print ""
+              print "## [" tag "] - " date
+              if (stub != "") {
+                print ""
+                print stub
+              }
+              next
+            }
+            { print }
+          ' CHANGELOG.md > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs: add release date to CHANGELOG for ${TAG}"
+          git tag -a "$TAG" -m "SpotConnect ${VERSION}"
+          git push origin main "$TAG"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Pushed tag ${TAG} with the CHANGELOG.md update."
+
+  # Calls release.yml directly rather than relying on the tag push above to
+  # trigger it - see the header comment for why that would never fire.
+  release:
+    needs: tag
+    uses: ./.github/workflows/release.yml
+    with:
+      release_tag: ${{ needs.tag.outputs.tag }}
+    # No `secrets: inherit` - release.yml references no secrets.* at all,
+    # only the automatic per-job GITHUB_TOKEN that every job already gets.
+    permissions:
+      contents: write
+      discussions: write

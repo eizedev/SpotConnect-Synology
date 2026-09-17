@@ -1,0 +1,49 @@
+# Standalone SAST scan using Semgrep's public ruleset. No cloud account or
+# SEMGREP_APP_TOKEN needed - `--config auto` pulls the public rules.
+name: Semgrep
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Semgrep SAST scan
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # --error makes findings actually fail the job. Without it semgrep
+      # scan exits 0 no matter what it finds, which turns the whole
+      # workflow into decoration: the SARIF upload below is the only thing
+      # that would surface anything, and that is best-effort (see below).
+      - name: Run Semgrep
+        run: semgrep scan --config auto --error --sarif --output semgrep.sarif
+
+      # Best-effort. Uploading SARIF needs GitHub code scanning, which is
+      # free on public repositories but requires Advanced Security on
+      # private ones - so while this repository is private the upload fails
+      # with "Code scanning is not enabled for this repository". That must
+      # not turn a clean scan into a red check, and it does not hide
+      # anything: findings already fail the step above. Once the repository
+      # is public this starts populating the Security tab as intended.
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
+        with:
+          sarif_file: semgrep.sarif
+        if: always()
+        continue-on-error: true

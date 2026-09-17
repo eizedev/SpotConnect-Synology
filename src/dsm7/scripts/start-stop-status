@@ -1,0 +1,357 @@
+#!/bin/sh
+
+set -eu
+
+SPOTCONNECT_USER="$(echo "${SYNOPKG_PKGNAME}" | awk '{print tolower($0)}')"
+SPOTCONNECT_CONFIG="${SYNOPKG_PKGDEST}/spotconnect.conf"
+CREDENTIALS_DIR="${SYNOPKG_PKGDEST}/credentials"
+CONFIG_UPNP="${SYNOPKG_PKGDEST}/config-upnp.xml"
+CONFIG_RAOP="${SYNOPKG_PKGDEST}/config-raop.xml"
+
+LOG="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.log"
+LOGBACKUP="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.1.log"
+
+if [ ! -f "${SPOTCONNECT_CONFIG}" ]; then
+    echo "[$(date +'%T')] SpotConnect config file does not exist! Please uninstall the package and reinstall it." >>"$LOG"
+    echo "[$(date +'%T')] SpotConnect config file does not exist! Please uninstall the package and reinstall it." >>"$SYNOPKG_TEMP_LOGFILE"
+    exit 150
+fi
+
+# shellcheck source=/dev/null
+. "${SPOTCONNECT_CONFIG}"
+
+# pgrep is not available on Synology devices, so process lookup goes through
+# ps - and every part of that invocation had to be measured on real hardware
+# (DSM 7 on x86_64, SRM 1.3.2 / BusyBox v1.16.1 on an RT2600ac), because all
+# three of the following differ between the two:
+#
+# 1. Which invocation lists ALL processes. DSM's ps needs "aux" - without it
+#    a daemonized (-z) process is invisible even while running, which is
+#    what makes a healthy install report as "stopped". BusyBox goes the
+#    other way: it lists everything by default and rejects "aux" outright
+#    ("ps: invalid option -- 'a'").
+# 2. Which column holds the PID. "ps aux" prints USER first and PID second;
+#    BusyBox prints "PID USER VSZ STAT COMMAND", so PID is first. Reading a
+#    fixed column hands kill(1) a username on SRM, and the stop path then
+#    fails silently.
+# 3. Whether the command line survives intact. BusyBox truncates COMMAND to
+#    78 characters unless "w" is passed (measured: 78 -> 131), which is
+#    close enough to the length of an @appstore path plus arguments to be a
+#    real risk for the path-anchored matching below.
+#
+# So: prefer "ps aux", fall back to "ps w", and only then to bare "ps".
+if ps aux >/dev/null 2>&1; then
+    PS_ALL_CMD="ps aux"
+    PS_PID_COL=2
+elif ps w >/dev/null 2>&1; then
+    PS_ALL_CMD="ps w"
+    PS_PID_COL=1
+else
+    PS_ALL_CMD="ps"
+    PS_PID_COL=1
+fi
+
+# Match on the full install path so an unrelated process that merely has
+# "spotupnp" or "spotraop" somewhere in its command line is never mistaken
+# for ours - and never killed.
+proc_running() {
+    # No "grep -q" on the far end: it exits at the first match, closing the
+    # pipe under the "grep -v grep" feeding it, which then writes
+    # "grep: write error: Broken pipe" into DSM's package log on every
+    # single check. Reading the input to the end costs nothing here.
+    # shellcheck disable=SC2009,SC2086
+    $PS_ALL_CMD | grep -v grep | grep -E "${SYNOPKG_PKGDEST}/$1([[:space:]]|\$)" >/dev/null
+}
+
+get_pid() {
+    # shellcheck disable=SC2009,SC2086
+    PID=$($PS_ALL_CMD | grep -v grep |
+        grep -E "${SYNOPKG_PKGDEST}/(spotupnp|spotraop)([[:space:]]|\$)" |
+        awk -v col="${PS_PID_COL}" '{print $col}')
+}
+
+port_in_use() {
+    # Anchored so port 4930 does not false-positive on an unrelated 49301
+    # listener - netstat's Local Address column always has whitespace right
+    # after the port number.
+    netstat -tln 2>/dev/null | grep -qE ":$1([[:space:]]|\$)"
+}
+
+MAX_LOG_BYTES=52428800
+
+# wc -c rather than stat: BusyBox's stat on SRM does not take GNU's
+# --printf, and a failing size check would silently disable rotation.
+file_bytes() {
+    wc -c <"$1" 2>/dev/null | tr -d ' '
+}
+
+rotate_log() {
+    if [ -f "${LOGBACKUP}" ] && [ "$(file_bytes "${LOGBACKUP}")" -gt "${MAX_LOG_BYTES}" ] 2>/dev/null; then
+        rm -f "${LOGBACKUP}"
+    fi
+    if [ -f "${LOG}" ] && [ "$(file_bytes "${LOG}")" -gt "${MAX_LOG_BYTES}" ] 2>/dev/null; then
+        cp -p "${LOG}" "${LOGBACKUP}" && rm -f "${LOG}"
+    fi
+    chmod 755 "${SYNOPKG_PKGDEST}/log" 2>>"$LOG" || true
+    [ -f "${LOG}" ] && { chmod 644 "${LOG}" 2>>"$LOG" || true; }
+    return 0
+}
+
+# Upstream writes the credential files itself with no chmod and no umask, so
+# the directory is the only thing standing between reusable Spotify tokens
+# and every other local user. Re-applied on every start rather than only at
+# install time, so it cannot be silently lost.
+prepare_credentials() {
+    if [ "${SPOTCONNECT_CREDENTIALS_ENABLED:-1}" = "1" ]; then
+        mkdir -p "${CREDENTIALS_DIR}" 2>>"$LOG" || true
+        chmod 700 "${CREDENTIALS_DIR}" 2>>"$LOG" || true
+    fi
+    return 0
+}
+
+# Upstream expects its own XML config file and complains loudly when it is
+# missing: spotraop prints a full-width
+# "!!!! ERROR LOADING CONFIG FILE !!!!" banner, which looks like a failure
+# but is not - it carries on with defaults. Users read logs, so a scary
+# banner on every start is worth removing rather than explaining.
+#
+# Writing a minimal skeleton is enough to silence it (verified on a DS923+:
+# with the skeleton both binaries start clean, without it spotraop shouts).
+# A skeleton rather than upstream's generated reference, because "-i" scans
+# the network for ~30s before writing - too slow for a start path - and its
+# output embeds the Spotify client_id/client_secret compiled into the
+# binary, which should not be sitting in a file users are told to edit and
+# paste into support threads.
+#
+# This also gives the file the documentation points at something to point
+# at: doc/CONFIG.md tells people to edit these for per-device settings.
+ensure_configs() {
+    for _pair in "spotupnp:${CONFIG_UPNP}" "spotraop:${CONFIG_RAOP}"; do
+        _root="${_pair%%:*}"
+        _file="${_pair##*:}"
+        if [ ! -f "${_file}" ]; then
+            echo "[$(date +'%T')] Creating minimal ${_root} config at \"${_file}\"" >>"$LOG"
+            {
+                echo '<?xml version="1.0"?>'
+                echo "<${_root}>"
+                echo "</${_root}>"
+            } >"${_file}" 2>>"$LOG" || true
+        fi
+    done
+    return 0
+}
+
+# Refuse to start a binary the dynamic loader cannot even load, and say why.
+#
+# This is not hypothetical: spotupnp/spotraop are C++ (cspot) and reference
+# GLIBCXX_3.4.29, which DSM only started shipping in later 7.x releases.
+# Measured: DSM 7.1.1 has libstdc++ 6.0.25 (GLIBCXX_3.4.25) and SRM 1.3.2 is
+# older still, so on those the dynamic packages cannot run at all, while DSM
+# 7.4.1 (libstdc++ 6.0.31) is fine. Without this check the user gets
+# "Failed to start" from Package Center and the real reason is buried in
+# /var/log/packages/, which is not a reasonable thing to expect of anyone.
+#
+# The exit status of "-t" is useless here: upstream prints its licence text
+# and then exits 1 in both binaries (ParseArgs returns false, main exits 1).
+# So detect success positively, by the licence text appearing. If it does
+# not, the loader wrote its error instead, and that error is exactly what
+# the user needs to see.
+preflight() {
+    _bin="$1"
+    # Assignment form keeps this safe under "set -e": a non-zero status from
+    # the command substitution would otherwise abort the script.
+    if _out=$("${SYNOPKG_PKGDEST}/${_bin}" -t 2>&1); then _rc=0; else _rc=$?; fi
+
+    case "${_out}" in
+    *"free software"*) return 0 ;;
+    esac
+
+    # A binary that dies before printing anything is the case that matters
+    # most and says least: measured on a DS415+ (Atom C2538, kernel 3.10.108)
+    # the static builds segfault instantly, producing no output at all. An
+    # empty "cannot be started:" line helps nobody, so describe the exit.
+    _advice=""
+    if [ -z "${_out}" ]; then
+        if [ "${_rc}" -gt 128 ]; then
+            _out="killed by signal $((_rc - 128)) immediately on startup, without printing anything"
+            _advice="This build is not compatible with this device - it crashes before it runs. Neither package variant will help. Please report it with your NAS model, DSM version and CPU."
+        else
+            _out="exited with status ${_rc} without printing anything"
+        fi
+    fi
+
+    case "${_out}" in
+    *GLIBCXX* | *"shared libraries"* | *"kernel too old"* | *GLIBC_*)
+        _advice="Your DSM version ships libraries that are too old for this build. Install the -static variant of the same package instead - it carries its own."
+        ;;
+    esac
+
+    echo "[$(date +'%T')] ${_bin} cannot be started on this system (exit ${_rc}):" >>"$LOG"
+    echo "[$(date +'%T')]   ${_out}" >>"$LOG"
+    echo "${_bin} cannot run on this system: ${_out}" >>"$SYNOPKG_TEMP_LOGFILE"
+    if [ -n "${_advice}" ]; then
+        echo "[$(date +'%T')] ${_advice}" >>"$LOG"
+        echo "${_advice}" >>"$SYNOPKG_TEMP_LOGFILE"
+    fi
+    return 1
+}
+
+# spotupnp and spotraop are NOT interchangeable, and sharing one argument
+# builder between them would be a real bug: -l means "flow mode" in spotupnp
+# but "AppleTV pairing" in spotraop (and "latency" in AirConnect's airupnp),
+# -b takes <ip>:<port> in spotupnp but only <ip> in spotraop, -g exists only
+# in spotupnp, and -c accepts entirely different values in each. Each
+# program therefore builds its own command line below.
+
+start_spotupnp() {
+    if [ -z "${SPOTUPNP_PORT}" ]; then
+        echo "[$(date +'%T')] SPOTUPNP_PORT is not set in \"${SPOTCONNECT_CONFIG}\"." >>"$LOG"
+        echo "[$(date +'%T')] SPOTUPNP_PORT is not set in \"${SPOTCONNECT_CONFIG}\"." >>"$SYNOPKG_TEMP_LOGFILE"
+        return 1
+    fi
+    if port_in_use "${SPOTUPNP_PORT}"; then
+        echo "[$(date +'%T')] UPnP port ${SPOTUPNP_PORT} is already in use." >>"$LOG"
+        echo "[$(date +'%T')] UPnP port ${SPOTUPNP_PORT} is already in use. If you also run AirConnect, give the two packages different ports." >>"$SYNOPKG_TEMP_LOGFILE"
+        return 1
+    fi
+
+    preflight spotupnp || return 1
+
+    set -- -b "${SYNO_IP}:${SPOTUPNP_PORT}" -x "${CONFIG_UPNP}" -z -f "${LOG}" -d "${SPOTUPNP_LOGLEVEL}"
+    if [ -n "${SPOTUPNP_PORTRANGE:-}" ]; then set -- "$@" -a "${SPOTUPNP_PORTRANGE}"; fi
+    if [ -n "${SPOTUPNP_CODEC:-}" ]; then set -- "$@" -c "${SPOTUPNP_CODEC}"; fi
+    if [ -n "${SPOTUPNP_CONTENTLENGTH_MODE:-}" ]; then set -- "$@" -g "${SPOTUPNP_CONTENTLENGTH_MODE}"; fi
+    if [ -n "${SPOTUPNP_RATE:-}" ]; then set -- "$@" -r "${SPOTUPNP_RATE}"; fi
+    if [ -n "${SPOTUPNP_NAME_FORMAT:-}" ]; then set -- "$@" -N "${SPOTUPNP_NAME_FORMAT}"; fi
+    if [ "${SPOTCONNECT_CREDENTIALS_ENABLED:-1}" = "1" ]; then set -- "$@" -J "${CREDENTIALS_DIR}"; fi
+
+    echo "[$(date +'%T')] Starting spotupnp on ${SYNO_IP}:${SPOTUPNP_PORT}" >>"$LOG"
+    "${SYNOPKG_PKGDEST}/spotupnp" "$@" 2>&1
+}
+
+start_spotraop() {
+    preflight spotraop || return 1
+
+    # No -b port and no -g here: spotraop takes neither.
+    set -- -b "${SYNO_IP}" -x "${CONFIG_RAOP}" -z -f "${LOG}" -d "${SPOTRAOP_LOGLEVEL}"
+    if [ -n "${SPOTRAOP_PORTRANGE:-}" ]; then set -- "$@" -a "${SPOTRAOP_PORTRANGE}"; fi
+    if [ -n "${SPOTRAOP_CODEC:-}" ]; then set -- "$@" -c "${SPOTRAOP_CODEC}"; fi
+    if [ -n "${SPOTRAOP_RATE:-}" ]; then set -- "$@" -r "${SPOTRAOP_RATE}"; fi
+    if [ -n "${SPOTRAOP_NAME_FORMAT:-}" ]; then set -- "$@" -N "${SPOTRAOP_NAME_FORMAT}"; fi
+    if [ "${SPOTCONNECT_CREDENTIALS_ENABLED:-1}" = "1" ]; then set -- "$@" -J "${CREDENTIALS_DIR}"; fi
+
+    echo "[$(date +'%T')] Starting spotraop on ${SYNO_IP}" >>"$LOG"
+    "${SYNOPKG_PKGDEST}/spotraop" "$@" 2>&1
+}
+
+start_spotconnect() {
+    if [ -z "${SYNO_IP}" ]; then
+        echo "[$(date +'%T')] SYNO_IP is not set in \"${SPOTCONNECT_CONFIG}\"." >>"$LOG"
+        echo "[$(date +'%T')] SYNO_IP is not set in \"${SPOTCONNECT_CONFIG}\"." >>"$SYNOPKG_TEMP_LOGFILE"
+        exit 150
+    fi
+    if [ "${SPOTUPNP_ENABLED}" != 1 ] && [ "${SPOTRAOP_ENABLED}" != 1 ]; then
+        echo "[$(date +'%T')] Neither spotupnp nor spotraop is enabled in \"${SPOTCONNECT_CONFIG}\"." >>"$LOG"
+        echo "[$(date +'%T')] Neither spotupnp nor spotraop is enabled in \"${SPOTCONNECT_CONFIG}\"." >>"$SYNOPKG_TEMP_LOGFILE"
+        exit 150
+    fi
+
+    rotate_log
+    prepare_credentials
+    ensure_configs
+
+    if [ "${SPOTUPNP_ENABLED}" = 1 ]; then
+        start_spotupnp || return 1
+    fi
+    if [ "${SPOTRAOP_ENABLED}" = 1 ]; then
+        start_spotraop || return 1
+    fi
+
+    if spotconnect_status; then
+        echo "[$(date +'%T')] SpotConnect started on ip \"${SYNO_IP}\"" >>"$LOG"
+        return 0
+    fi
+
+    echo "[$(date +'%T')] Failed to start SpotConnect on ip \"${SYNO_IP}\", stopping it..." >>"$LOG"
+    echo "[$(date +'%T')] Failed to start SpotConnect on ip \"${SYNO_IP}\", stopping it..." >>"$SYNOPKG_TEMP_LOGFILE"
+    stop_spotconnect
+    return 1
+}
+
+stop_spotconnect() {
+    get_pid
+    if [ -n "${PID}" ]; then
+        # shellcheck disable=SC2086
+        kill $PID
+        sleep 10
+    fi
+
+    # A process that ignores SIGTERM would otherwise leave the package stuck
+    # "still running" forever, blocking stop, upgrade and uninstall.
+    get_pid
+    if [ -n "${PID}" ]; then
+        echo "[$(date +'%T')] Stop: still running 10s after SIGTERM (pid(s): ${PID}), sending SIGKILL." >>"$LOG"
+        # shellcheck disable=SC2086
+        kill -9 $PID
+        sleep 1
+    fi
+
+    STILL_RUNNING=""
+    for bin in spotupnp spotraop; do
+        if proc_running "${bin}"; then
+            STILL_RUNNING="${STILL_RUNNING}${bin} "
+        fi
+    done
+    if [ -n "${STILL_RUNNING}" ]; then
+        echo "[$(date +'%T')] Stop: still running: ${STILL_RUNNING}" >>"$LOG"
+        echo "[$(date +'%T')] Stop: still running: ${STILL_RUNNING}" >>"$SYNOPKG_TEMP_LOGFILE"
+        return 1
+    fi
+    return 0
+}
+
+# Running means: every program that is switched on is up. Anything less is
+# reported as stopped, so a half-running package is never shown as healthy.
+spotconnect_status() {
+    NOT_RUNNING=""
+    if [ "${SPOTUPNP_ENABLED}" = 1 ] && ! proc_running spotupnp; then
+        NOT_RUNNING="${NOT_RUNNING}spotupnp "
+    fi
+    if [ "${SPOTRAOP_ENABLED}" = 1 ] && ! proc_running spotraop; then
+        NOT_RUNNING="${NOT_RUNNING}spotraop "
+    fi
+    if [ -n "${NOT_RUNNING}" ]; then
+        echo "[$(date +'%T')] Status: not running: ${NOT_RUNNING}" >>"$LOG"
+        return 3
+    fi
+    return 0
+}
+
+case $1 in
+start)
+    echo "[$(date +'%T')] Starting SpotConnect ..." >>"$LOG"
+    start_spotconnect
+    exit $?
+    ;;
+stop)
+    echo "[$(date +'%T')] Stopping SpotConnect ..." >>"$LOG"
+    stop_spotconnect
+    exit $?
+    ;;
+status)
+    if spotconnect_status; then
+        echo "[$(date +'%T')] SpotConnect is running"
+        exit 0
+    else
+        echo "[$(date +'%T')] SpotConnect is not running"
+        exit 3
+    fi
+    ;;
+log)
+    echo "${LOG}"
+    exit 0
+    ;;
+*)
+    exit 1
+    ;;
+esac

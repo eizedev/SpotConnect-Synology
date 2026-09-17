@@ -1,0 +1,11 @@
+.DS_Store
+package.tgz
+*.spk
+target/
+dist/
+src/dsm7/bin/**
+
+# Local AI assistant config/memory - must never be published in this public repo
+CLAUDE.md
+AGENTS.md
+.claude/

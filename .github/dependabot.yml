@@ -1,0 +1,12 @@
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      # Wait a week before proposing a newly published action version - a
+      # release published minutes ago has had no time for anyone else to
+      # notice if it is broken or malicious.
+      default-days: 7

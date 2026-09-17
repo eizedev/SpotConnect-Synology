@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Intentionally empty.
+#
+# The obvious thing to do here would be to test-run the binary and report a
+# clear message if it cannot start on this device (glibc's "FATAL: kernel too
+# old", which depends on the device's current DSM patch level rather than on
+# its model or kernel number - see AirConnect-Synology's doc/ARCHITECTURES.md
+# for the full reasoning). That cannot happen in preinst: the package
+# contents are not extracted to SYNOPKG_PKGDEST until after this script runs,
+# so there is no binary here to probe yet.
+
+exit 0
