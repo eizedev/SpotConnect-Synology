@@ -127,8 +127,11 @@ port. This package ships defaults that stay out of AirConnect's way:
 | SpotConnect `spotupnp` | 49300     | 49301–49428    |
 | SpotConnect `spotraop` | —         | 49430–49557    |
 
-Coexistence on one NAS has **not been verified on hardware yet**. The port separation is
-deliberate rather than tested, and if you hit a conflict, `SPOTUPNP_PORT` is the knob.
+Coexistence on one NAS is **verified**: on a DS923+ running both packages, all four
+processes (`spotupnp`, `spotraop`, `airupnp`, `aircast`) run at the same time with no port
+conflict, and each speaker shows up twice in the Spotify picker — once plain, once with
+the `+`. If you do hit a conflict after changing ports yourself, `SPOTUPNP_PORT` is the
+knob, and it must stay above 49152.
 
 ## The honest limits
 

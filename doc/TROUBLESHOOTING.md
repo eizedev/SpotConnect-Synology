@@ -134,8 +134,8 @@ Both packages run a UPnP stack. The defaults here are chosen to avoid AirConnect
 If you changed either package's ports, make sure the ranges do not overlap, and remember
 `SPOTUPNP_PORT` must be above 49152.
 
-Note that coexistence has not yet been verified on hardware. If you find a conflict the
-defaults do not avoid, that is worth an issue.
+Running both at once is verified on a DS923+ — all four processes coexist on the default
+ports. If you find a conflict the defaults do not avoid, that is worth an issue.
 
 ## Reporting a problem
 

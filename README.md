@@ -14,9 +14,13 @@ Your NAS holds the stream, not your phone — so the music keeps playing when yo
 of the door, and anyone in the house can take over from any Spotify app, Android
 included.
 
-> ⚠️ **Pre-release.** This package has not yet been verified on real hardware. Values
-> marked _provisional_ below are expected to be right, not measured. This notice is
-> removed once the first release is tested.
+> **Pre-release.** Verified on a DS923+ (DSM 7.4.1): both bridges start, speakers appear
+> individually in Spotify, playback works, control transfers between devices, and it runs
+> alongside AirConnect without conflict. Not yet verified: playback survival when the
+> controlling phone leaves the network, whether Spotify Free works, and CPU cost on older
+> models. Two of the defaults below are still marked _provisional_ for that reason. Older
+> devices may not be able to run this at all — see
+> [Which package do I need?](#which-package-do-i-need).
 
 ## Table of contents
 

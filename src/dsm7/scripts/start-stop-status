@@ -55,8 +55,12 @@ fi
 # "spotupnp" or "spotraop" somewhere in its command line is never mistaken
 # for ours - and never killed.
 proc_running() {
+    # No "grep -q" on the far end: it exits at the first match, closing the
+    # pipe under the "grep -v grep" feeding it, which then writes
+    # "grep: write error: Broken pipe" into DSM's package log on every
+    # single check. Reading the input to the end costs nothing here.
     # shellcheck disable=SC2009,SC2086
-    $PS_ALL_CMD | grep -v grep | grep -qE "${SYNOPKG_PKGDEST}/$1([[:space:]]|\$)"
+    $PS_ALL_CMD | grep -v grep | grep -E "${SYNOPKG_PKGDEST}/$1([[:space:]]|\$)" >/dev/null
 }
 
 get_pid() {
@@ -102,6 +106,38 @@ prepare_credentials() {
         mkdir -p "${CREDENTIALS_DIR}" 2>>"$LOG" || true
         chmod 700 "${CREDENTIALS_DIR}" 2>>"$LOG" || true
     fi
+    return 0
+}
+
+# Upstream expects its own XML config file and complains loudly when it is
+# missing: spotraop prints a full-width
+# "!!!! ERROR LOADING CONFIG FILE !!!!" banner, which looks like a failure
+# but is not - it carries on with defaults. Users read logs, so a scary
+# banner on every start is worth removing rather than explaining.
+#
+# Writing a minimal skeleton is enough to silence it (verified on a DS923+:
+# with the skeleton both binaries start clean, without it spotraop shouts).
+# A skeleton rather than upstream's generated reference, because "-i" scans
+# the network for ~30s before writing - too slow for a start path - and its
+# output embeds the Spotify client_id/client_secret compiled into the
+# binary, which should not be sitting in a file users are told to edit and
+# paste into support threads.
+#
+# This also gives the file the documentation points at something to point
+# at: doc/CONFIG.md tells people to edit these for per-device settings.
+ensure_configs() {
+    for _pair in "spotupnp:${CONFIG_UPNP}" "spotraop:${CONFIG_RAOP}"; do
+        _root="${_pair%%:*}"
+        _file="${_pair##*:}"
+        if [ ! -f "${_file}" ]; then
+            echo "[$(date +'%T')] Creating minimal ${_root} config at \"${_file}\"" >>"$LOG"
+            {
+                echo '<?xml version="1.0"?>'
+                echo "<${_root}>"
+                echo "</${_root}>"
+            } >"${_file}" 2>>"$LOG" || true
+        fi
+    done
     return 0
 }
 
@@ -222,6 +258,7 @@ start_spotconnect() {
 
     rotate_log
     prepare_credentials
+    ensure_configs
 
     if [ "${SPOTUPNP_ENABLED}" = 1 ]; then
         start_spotupnp || return 1

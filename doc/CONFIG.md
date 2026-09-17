@@ -129,6 +129,13 @@ sudo -u spotconnect /var/packages/SpotConnect/target/spotupnp -i /tmp/reference.
 That discovers your players, writes the file and exits. Copy the parts you need into
 `config-upnp.xml` rather than replacing it wholesale.
 
+> **Do not share a generated file as-is.** Upstream writes its own Spotify application
+> `<client_id>` and `<client_secret>` into it in clear text — the ones compiled into the
+> binary, which upstream deliberately keeps out of its published source. If you paste a
+> config into a forum thread or a bug report, strip those two tags first. The package's own
+> `config-upnp.xml` / `config-raop.xml` do not contain them: they are created as empty
+> skeletons, and nothing here runs `-i` or `-I` on your behalf.
+
 ## What is deliberately not configurable
 
 **The credentials directory.** Its path is derived, not read from the config, because a
