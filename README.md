@@ -35,6 +35,10 @@ included.
 >
 > If it works, or does not, on a device not listed above, saying so in an issue is the
 > single most useful thing you can contribute right now.
+>
+> A final release follows once upstream publishes 0.20.9 — it carries three fixes that
+> came out of packaging this, and building a final package against an upstream
+> pre-release would be the wrong way round.
 
 ## Table of contents
 
@@ -239,6 +243,11 @@ files with a plain `fopen` and no `chmod`, so they land world-readable. The dire
 what protects them, which is also why its location is fixed rather than configurable — a
 configurable path invites pointing it at a shared folder, which is the one place they
 must never be.
+
+Upstream fixed this in 0.20.9, which writes the files `0600` itself
+([#76](https://github.com/philippe44/SpotConnect/issues/76), confirmed on hardware). This
+package still ships 0.20.8, so the directory is doing the work today — and it will keep
+doing it after the update, as a second layer rather than the only one.
 
 **To sign in again** — after switching Spotify accounts, or if a speaker stops responding
 — discard the stored token and let a fresh one be issued:
