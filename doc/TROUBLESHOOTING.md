@@ -59,24 +59,28 @@ Same origin as above. The stop path finds processes by matching the package's ow
 path in `ps` output and escalates from `SIGTERM` to `SIGKILL` after ten seconds. If a
 process survives that, the log names which one. Include that line in a bug report.
 
-## `FATAL: kernel too old`, or the package will not start on older hardware
+## The package will not start on an older device
 
-Install the **`-static`** package for your architecture instead. It carries its own C
-library and does not depend on the one your DSM version ships.
+Read the package's own log first (`synopkg log SpotConnect`) — it checks the binary before
+starting and names the reason. There are two distinct failures, with different answers.
 
-Why this happens at all: the dynamically linked binaries declare a minimum kernel
-version, and glibc refuses to start if the running kernel looks older. Whether a
-particular device trips this depends on its **current DSM patch level**, not on its model
-or kernel version number — the sibling project established on real hardware that the same
-kernel and glibc combination which failed for users in 2023 ran fine when re-tested
-later. So this cannot be predicted from a table, and a device that is "too old" on paper
-may be fine in practice.
+**`version 'GLIBCXX_3.4.29' not found`** — your DSM ships a libstdc++ older than the
+dynamic build needs. Install the **`-static`** package of the same architecture instead; it
+carries its own C++ library.
 
-If `-static` also fails, open an issue with the output of:
+**Killed by a signal immediately on startup, with no message** — the binary segfaults
+before it runs. This affects the `-static` builds on kernels below 4.4.255, and nothing in
+the package can work around it. Measured on a DS415+ (kernel 3.10.108) and an RT2600ac
+(4.4.60); a DS923+ (4.4.302+) is fine. Reported upstream as
+[SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78) — if you hit this,
+adding your model, DSM version and `uname -r` there is genuinely useful.
+
+If both variants fail this way, SpotConnect 0.20.8 cannot run on that device yet. Check
+with:
 
 ```sh
-uname -a
-/lib*/libc.so.6 --version | head -1
+uname -r
+grep -ao "GLIBCXX_3.4.29" /lib*/libstdc++.so.6 | head -1
 cat /etc.defaults/VERSION
 ```
 

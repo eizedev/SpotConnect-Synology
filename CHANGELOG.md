@@ -27,10 +27,36 @@ Initial packaging. Nothing released yet.
 - Tuned defaults so nothing has to be looked up: bitrate 320 (upstream defaults to 160),
   fixed HTTP/RTP port ranges for firewall rules, and ports chosen to stay clear of
   AirConnect on the same NAS.
+- A pre-flight check before starting either binary. It runs the binary once and, if it
+  cannot run on this device, puts the real reason into the package log and into Package
+  Center instead of a bare "Failed to start" with the cause buried in
+  `/var/log/packages/`. It distinguishes a too-old libstdc++ (answer: install the
+  `-static` package) from a binary that crashes outright (answer: this device cannot run
+  this build), and reports the signal when a binary dies without printing anything.
 - `tests/validate_elf.py` and `tests/validate_spk.sh`, carried over from
-  AirConnect-Synology.
+  AirConnect-Synology. `validate_elf.py` was extended to also collect `GLIBCXX_` and
+  `CXXABI_` symbol versions, not just `GLIBC_`. That was a real gap rather than a nicety:
+  `"GLIBCXX_3.4.29".startswith("GLIBC_")` is false, so the C++ requirements were silently
+  dropped and the tool reported `max_glibc=2.17` — "runs anywhere" — for binaries that
+  cannot start on DSM 7.1.
 - Documentation: README plus `doc/OVERVIEW.md`, `doc/ARCHITECTURES.md`, `doc/CONFIG.md`,
   `doc/TROUBLESHOOTING.md`, `doc/BUILD.md`.
+
+### Known issues
+
+- **Some older devices cannot run SpotConnect 0.20.8 at all**, and this is upstream rather
+  than packaging. The dynamic builds need `GLIBCXX_3.4.29`, which older DSM releases do
+  not ship; the `-static` builds, which would otherwise solve that, terminate with
+  `SIGSEGV` on startup on kernels below the 4.4.255 they declare. Measured: DS923+
+  (DSM 7.4.1, kernel 4.4.302+) works; DS415+ (DSM 7.1.1, kernel 3.10.108) and RT2600ac
+  (SRM 1.3.2, kernel 4.4.60) fail both ways. Reported as
+  [SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78). The same crash
+  affects AirConnect's static builds on the same hardware, so it is not specific to this
+  project.
+- Two smaller upstream reports from the same work:
+  [#76](https://github.com/philippe44/SpotConnect/issues/76) (credential files written
+  world-readable) and [#77](https://github.com/philippe44/SpotConnect/issues/77) (`-t`
+  exits 1 on success).
 
 ### Notes on things done differently from AirConnect-Synology
 

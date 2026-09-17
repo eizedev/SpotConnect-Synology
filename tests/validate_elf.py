@@ -211,15 +211,29 @@ def _read_section_headers(data, header):
     return sh_entries
 
 
-def _scan_glibc_versions(data, header):  # pylint: disable=too-many-locals
+def _scan_symbol_versions(data, header):  # pylint: disable=too-many-locals
     """Walk the section table looking for the Verneed section, then chain
-    through Verneed -> Vernaux records to collect every "GLIBC_x.y[.z]"
-    version string the binary actually references.
+    through Verneed -> Vernaux records to collect the versioned symbols the
+    binary actually references, grouped by library.
 
-    Informational only: any parse failure here degrades to an empty list
+    Three groups are collected, and the distinction matters:
+
+    - GLIBC_*   from libc, the C runtime.
+    - GLIBCXX_* from libstdc++, the C++ standard library.
+    - CXXABI_*  from libstdc++ as well, the C++ ABI.
+
+    spotupnp/spotraop are C++ (cspot), so libstdc++ is the binding
+    constraint here, not libc - and it is a much tighter one, because DSM
+    ships a considerably older libstdc++ than its glibc version suggests.
+    Collecting only GLIBC_ was an actual bug: "GLIBCXX_3.4.29" does not
+    start with "GLIBC_", so it was silently dropped, and this tool happily
+    reported max_glibc=2.17 for a binary that could not start on DSM 7.1
+    because it needed GLIBCXX_3.4.29.
+
+    Informational only: any parse failure here degrades to empty lists
     rather than failing binaries that otherwise parsed fine (e.g. static
     builds, which legitimately have no version-needs section at all)."""
-    glibc_versions = []
+    found = {"GLIBC_": [], "GLIBCXX_": [], "CXXABI_": []}
     endian = header["endian"]
     try:
         if not (
@@ -227,7 +241,7 @@ def _scan_glibc_versions(data, header):  # pylint: disable=too-many-locals
             and header["e_shnum"]
             and header["e_shstrndx"] < header["e_shnum"]
         ):
-            return glibc_versions
+            return found
 
         sh_entries = _read_section_headers(data, header)
         shstr_off = sh_entries[header["e_shstrndx"]][3]
@@ -263,8 +277,12 @@ def _scan_glibc_versions(data, header):  # pylint: disable=too-many-locals
                         endian + "II", data, aux_pos + 8
                     )
                     verstr = read_str(dynstr_off, vna_name)
-                    if verstr.startswith("GLIBC_"):
-                        glibc_versions.append(verstr[len("GLIBC_") :])
+                    # Longest prefix first: "GLIBCXX_" would otherwise never
+                    # be reached if "GLIBC_" were tested first.
+                    for prefix in ("GLIBCXX_", "CXXABI_", "GLIBC_"):
+                        if verstr.startswith(prefix):
+                            found[prefix].append(verstr[len(prefix) :])
+                            break
                     if vna_next == 0:
                         break
                     aux_pos += vna_next
@@ -272,8 +290,8 @@ def _scan_glibc_versions(data, header):  # pylint: disable=too-many-locals
                     break
                 pos += vn_next
     except (struct.error, IndexError):
-        glibc_versions = []
-    return glibc_versions
+        found = {"GLIBC_": [], "GLIBCXX_": [], "CXXABI_": []}
+    return found
 
 
 def version_key(version):
@@ -289,8 +307,13 @@ def parse_elf(data):
     should show up as a hard failure, not a silently empty report."""
     header = _read_elf_header(data)
     interp, min_kernel, has_interp_segment = _scan_program_headers(data, header)
-    glibc_versions = _scan_glibc_versions(data, header)
+    versions = _scan_symbol_versions(data, header)
+    glibc_versions = versions["GLIBC_"]
+    glibcxx_versions = versions["GLIBCXX_"]
+    cxxabi_versions = versions["CXXABI_"]
     max_glibc = max(glibc_versions, key=version_key, default=None)
+    max_glibcxx = max(glibcxx_versions, key=version_key, default=None)
+    max_cxxabi = max(cxxabi_versions, key=version_key, default=None)
     e_machine = header["e_machine"]
 
     return {
@@ -303,6 +326,10 @@ def parse_elf(data):
         "min_kernel": min_kernel,
         "glibc_versions_referenced": sorted(set(glibc_versions), key=version_key),
         "max_glibc_required": max_glibc,
+        "glibcxx_versions_referenced": sorted(set(glibcxx_versions), key=version_key),
+        "max_glibcxx_required": max_glibcxx,
+        "cxxabi_versions_referenced": sorted(set(cxxabi_versions), key=version_key),
+        "max_cxxabi_required": max_cxxabi,
     }
 
 
@@ -393,6 +420,8 @@ def main():
                 f"{'dynamic' if result['is_dynamic'] else 'static'}, "
                 f"min_kernel={result['min_kernel']}, "
                 f"max_glibc={result['max_glibc_required']}, "
+                f"max_glibcxx={result['max_glibcxx_required']}, "
+                f"max_cxxabi={result['max_cxxabi_required']}, "
                 f"interp={result['interp']}"
             )
         for warning in result["warnings"]:

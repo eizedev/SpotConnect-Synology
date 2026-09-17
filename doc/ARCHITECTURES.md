@@ -25,15 +25,61 @@ page and match it below.
 All packages declare `os_min_ver` 7.0-40000, i.e. **DSM 7 and newer**. There is no DSM 5/6
 line for this package.
 
-## The `-static` variant
+## Which variant — and the honest answer that some devices have none
 
-Every architecture also has a `-static` package. The binaries inside it carry their own C
-library instead of using the one on your device.
+Every architecture ships in two builds, dynamic and `-static`. Choosing between them is
+unfortunately not a formality for this package, and on some older devices neither works.
 
-Install the normal one first. Use `-static` if the normal one fails to start with an
-error about the kernel or a missing library version — that is precisely what it is for.
-The trade-off is size (roughly twice as large) and that it cannot pick up security fixes
-to your system's libc, so it is a fallback rather than the default.
+Two independent constraints are in play.
+
+### 1. The dynamic builds need a recent libstdc++
+
+`spotupnp` and `spotraop` are C++ (upstream builds on cspot), and the dynamic builds
+reference **`GLIBCXX_3.4.29`** — a libstdc++ symbol version that only exists from
+libstdc++ 6.0.29 (GCC 11) onwards. DSM ships libstdc++ with the OS, so this is decided by
+your DSM release:
+
+```text
+/volume1/@appstore/SpotConnect/spotupnp: /lib64/libstdc++.so.6:
+version `GLIBCXX_3.4.29' not found (required by .../spotupnp)
+```
+
+### 2. The static builds crash on older kernels
+
+The `-static` builds carry their own C and C++ libraries, which solves the above — but on
+kernels below the 4.4.255 the binaries declare, they terminate with `SIGSEGV` immediately
+on startup, before printing anything. Reported upstream as
+[SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78).
+
+### Measured on real hardware
+
+| Device   | DSM/SRM   | Kernel   | libstdc++ | Dynamic        | `-static`  |
+| -------- | --------- | -------- | --------- | -------------- | ---------- |
+| DS923+   | DSM 7.4.1 | 4.4.302+ | 6.0.31    | **works**      | works      |
+| DS415+   | DSM 7.1.1 | 3.10.108 | 6.0.25    | no (`GLIBCXX`) | no (crash) |
+| RT2600ac | SRM 1.3.2 | 4.4.60   | older     | no (`GLIBCXX`) | no (crash) |
+
+### So which do I install?
+
+1. **Install the dynamic package first.** On a current DSM it simply works, and it is half
+   the size.
+2. **If it reports a missing `GLIBCXX` version, install the `-static` package instead.**
+   This is the case it genuinely rescues: a device new enough to have a 4.4.255+ kernel but
+   running a DSM release whose libstdc++ is too old.
+3. **If the `-static` package then dies without a message, this device cannot run
+   SpotConnect 0.20.8 at all.** That is not something the packaging can work around, and
+   it is what upstream issue #78 is about.
+
+You do not have to work this out by reading logs: the package checks before starting and
+says which of these three cases you are in, in plain words, in Package Center and in its
+own log.
+
+To check in advance over SSH:
+
+```sh
+uname -r                                              # needs to be >= 4.4.255 for -static
+grep -ao "GLIBCXX_3.4.29" /lib*/libstdc++.so.6 | head -1   # output means dynamic will load
+```
 
 The `-static` packages for `arm`, `aarch64` and `powerpc` additionally declare `noarch`,
 which lets DSM offer them on platforms not otherwise listed.
@@ -41,30 +87,34 @@ which lets DSM offer them on platforms not otherwise listed.
 ## What the binaries require
 
 Measured with [`tests/validate_elf.py`](../tests/validate_elf.py) against SpotConnect
-0.20.8. These values are **diagnostic, not a compatibility promise** — see the warning
-below.
+0.20.8. Every dynamic build has the same requirements; only the machine type and
+interpreter differ.
 
-| Package       | Machine        | Linkage | Interpreter                   | Declared min. kernel | Highest glibc referenced |
-| ------------- | -------------- | ------- | ----------------------------- | -------------------- | ------------------------ |
-| `arm`         | arm 32-bit     | dynamic | `/lib/ld-linux-armhf.so.3`    | 4.4.255              | 2.17                     |
-| `armv5`       | arm 32-bit     | dynamic | `/lib/ld-linux.so.3`          | 4.4.255              | 2.17                     |
-| `aarch64`     | aarch64        | dynamic | `/lib/ld-linux-aarch64.so.1`  | 4.4.255              | 2.17                     |
-| `powerpc`     | powerpc 32-bit | dynamic | `/lib/ld.so.1`                | 4.4.255              | 2.17                     |
-| `x86`         | x86 32-bit     | dynamic | `/lib/ld-linux.so.2`          | 4.4.255              | 2.17                     |
-| `x86_64`      | x86_64         | dynamic | `/lib64/ld-linux-x86-64.so.2` | 4.4.255              | 2.17                     |
-| any `-static` | as above       | static  | none                          | 4.4.255              | n/a                      |
+| Package       | Machine        | Linkage | Interpreter                   | Min. kernel | `GLIBC` | `GLIBCXX` |
+| ------------- | -------------- | ------- | ----------------------------- | ----------- | ------- | --------- |
+| `arm`         | arm 32-bit     | dynamic | `/lib/ld-linux-armhf.so.3`    | 4.4.255     | 2.17    | 3.4.29    |
+| `armv5`       | arm 32-bit     | dynamic | `/lib/ld-linux.so.3`          | 4.4.255     | 2.17    | 3.4.29    |
+| `aarch64`     | aarch64        | dynamic | `/lib/ld-linux-aarch64.so.1`  | 4.4.255     | 2.17    | 3.4.29    |
+| `powerpc`     | powerpc 32-bit | dynamic | `/lib/ld.so.1`                | 4.4.255     | 2.17    | 3.4.29    |
+| `x86`         | x86 32-bit     | dynamic | `/lib/ld-linux.so.2`          | 4.4.255     | 2.17    | 3.4.29    |
+| `x86_64`      | x86_64         | dynamic | `/lib64/ld-linux-x86-64.so.2` | 4.4.255     | 2.17    | 3.4.29    |
+| any `-static` | as above       | static  | none                          | 4.4.255     | n/a     | n/a       |
 
 Note the interpreter difference between `arm` and `armv5`: hard-float versus soft-float.
 That is why they are separate packages and not interchangeable.
 
-> **The "declared min. kernel" column does not tell you whether the package will run on
-> your device.** It is the value in the binary's `.note.ABI-tag`. Its sibling project
-> AirConnect-Synology established on real hardware that whether a device actually hits
-> glibc's `FATAL: kernel too old` depends on that device's current DSM patch level, not
-> on its model, platform name or kernel version number — the same kernel and glibc
-> combination that failed for users in 2023 ran fine when re-tested later. Do not build a
-> "supported devices" list from this table. If your device runs it, it runs it; if it
-> does not, try `-static`.
+**`GLIBCXX` is the column that decides whether the package runs**, and it is the one that
+is easy to overlook — `GLIBC` 2.17 is ancient and satisfied everywhere, which makes the
+binaries look far more portable than they are. This tool originally reported only the
+`GLIBC` column and was extended after a real installation failed on a device it had
+declared fine.
+
+> **The "min. kernel" column, by contrast, tells you nothing useful.** It is the value in
+> the binary's `.note.ABI-tag`. The sibling project AirConnect-Synology established on
+> real hardware that whether a device actually hits glibc's `FATAL: kernel too old`
+> depends on its current DSM patch level, not on its model, platform name or kernel
+> version number — the same combination that failed for users in 2023 ran fine when
+> re-tested later. Do not build a "supported devices" list from that column.
 
 ## Why some upstream architectures are not packaged
 

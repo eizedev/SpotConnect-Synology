@@ -149,11 +149,13 @@ the same way a Spotify Connect speaker you bought would.
 **Full architecture matrix and the `-static` fallback:** see
 [doc/ARCHITECTURES.md](doc/ARCHITECTURES.md).
 
-> **On older hardware** the binaries can fail immediately with `FATAL: kernel too old`.
-> This is real, but it is **not predictable from your model alone** — it depends on your
-> device's current DSM patch level rather than on its platform or kernel number. Try the
-> `-static` package, which carries its own C library. See
-> [doc/TROUBLESHOOTING.md](doc/TROUBLESHOOTING.md).
+> **Older devices may not work at all.** The dynamic build needs a libstdc++ that older
+> DSM releases do not ship, and the `-static` build — normally the answer to that — crashes
+> on kernels below 4.4.255 ([upstream #78](https://github.com/philippe44/SpotConnect/issues/78)).
+> Measured: a DS923+ on DSM 7.4.1 works, a DS415+ on DSM 7.1.1 and an RT2600ac on SRM 1.3.2
+> do not. The package detects all of this at start and tells you which case you are in, in
+> plain words. See [doc/ARCHITECTURES.md](doc/ARCHITECTURES.md) before assuming your device
+> is supported.
 
 ## Install
 
@@ -248,7 +250,11 @@ are not exposed here: [doc/CONFIG.md](doc/CONFIG.md).
   matters on older models has not been measured yet.
 - **This is an unofficial, reverse-engineered Spotify integration.** It is not endorsed
   by Spotify, and a change on their side can break it without warning.
-- **Nothing here is hardware-verified yet** — see the pre-release notice at the top.
+- **Some older devices cannot run this at all.** Not a packaging limitation: the dynamic
+  build needs `GLIBCXX_3.4.29` and the `-static` build segfaults on kernels below 4.4.255.
+  Confirmed on a DS415+ and an RT2600ac; reported upstream as
+  [#78](https://github.com/philippe44/SpotConnect/issues/78). See
+  [doc/ARCHITECTURES.md](doc/ARCHITECTURES.md).
 
 ## Building from source
 

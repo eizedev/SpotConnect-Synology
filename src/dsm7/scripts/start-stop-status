@@ -105,6 +105,61 @@ prepare_credentials() {
     return 0
 }
 
+# Refuse to start a binary the dynamic loader cannot even load, and say why.
+#
+# This is not hypothetical: spotupnp/spotraop are C++ (cspot) and reference
+# GLIBCXX_3.4.29, which DSM only started shipping in later 7.x releases.
+# Measured: DSM 7.1.1 has libstdc++ 6.0.25 (GLIBCXX_3.4.25) and SRM 1.3.2 is
+# older still, so on those the dynamic packages cannot run at all, while DSM
+# 7.4.1 (libstdc++ 6.0.31) is fine. Without this check the user gets
+# "Failed to start" from Package Center and the real reason is buried in
+# /var/log/packages/, which is not a reasonable thing to expect of anyone.
+#
+# The exit status of "-t" is useless here: upstream prints its licence text
+# and then exits 1 in both binaries (ParseArgs returns false, main exits 1).
+# So detect success positively, by the licence text appearing. If it does
+# not, the loader wrote its error instead, and that error is exactly what
+# the user needs to see.
+preflight() {
+    _bin="$1"
+    # Assignment form keeps this safe under "set -e": a non-zero status from
+    # the command substitution would otherwise abort the script.
+    if _out=$("${SYNOPKG_PKGDEST}/${_bin}" -t 2>&1); then _rc=0; else _rc=$?; fi
+
+    case "${_out}" in
+    *"free software"*) return 0 ;;
+    esac
+
+    # A binary that dies before printing anything is the case that matters
+    # most and says least: measured on a DS415+ (Atom C2538, kernel 3.10.108)
+    # the static builds segfault instantly, producing no output at all. An
+    # empty "cannot be started:" line helps nobody, so describe the exit.
+    _advice=""
+    if [ -z "${_out}" ]; then
+        if [ "${_rc}" -gt 128 ]; then
+            _out="killed by signal $((_rc - 128)) immediately on startup, without printing anything"
+            _advice="This build is not compatible with this device - it crashes before it runs. Neither package variant will help. Please report it with your NAS model, DSM version and CPU."
+        else
+            _out="exited with status ${_rc} without printing anything"
+        fi
+    fi
+
+    case "${_out}" in
+    *GLIBCXX* | *"shared libraries"* | *"kernel too old"* | *GLIBC_*)
+        _advice="Your DSM version ships libraries that are too old for this build. Install the -static variant of the same package instead - it carries its own."
+        ;;
+    esac
+
+    echo "[$(date +'%T')] ${_bin} cannot be started on this system (exit ${_rc}):" >>"$LOG"
+    echo "[$(date +'%T')]   ${_out}" >>"$LOG"
+    echo "${_bin} cannot run on this system: ${_out}" >>"$SYNOPKG_TEMP_LOGFILE"
+    if [ -n "${_advice}" ]; then
+        echo "[$(date +'%T')] ${_advice}" >>"$LOG"
+        echo "${_advice}" >>"$SYNOPKG_TEMP_LOGFILE"
+    fi
+    return 1
+}
+
 # spotupnp and spotraop are NOT interchangeable, and sharing one argument
 # builder between them would be a real bug: -l means "flow mode" in spotupnp
 # but "AppleTV pairing" in spotraop (and "latency" in AirConnect's airupnp),
@@ -124,6 +179,8 @@ start_spotupnp() {
         return 1
     fi
 
+    preflight spotupnp || return 1
+
     set -- -b "${SYNO_IP}:${SPOTUPNP_PORT}" -x "${CONFIG_UPNP}" -z -f "${LOG}" -d "${SPOTUPNP_LOGLEVEL}"
     if [ -n "${SPOTUPNP_PORTRANGE:-}" ]; then set -- "$@" -a "${SPOTUPNP_PORTRANGE}"; fi
     if [ -n "${SPOTUPNP_CODEC:-}" ]; then set -- "$@" -c "${SPOTUPNP_CODEC}"; fi
@@ -137,6 +194,8 @@ start_spotupnp() {
 }
 
 start_spotraop() {
+    preflight spotraop || return 1
+
     # No -b port and no -g here: spotraop takes neither.
     set -- -b "${SYNO_IP}" -x "${CONFIG_RAOP}" -z -f "${LOG}" -d "${SPOTRAOP_LOGLEVEL}"
     if [ -n "${SPOTRAOP_PORTRANGE:-}" ]; then set -- "$@" -a "${SPOTRAOP_PORTRANGE}"; fi
