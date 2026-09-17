@@ -1,0 +1,58 @@
+# Runs super-linter over changed files on every push and pull request.
+# See https://github.com/super-linter/super-linter
+name: Lint Code Base
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions: read-all
+
+jobs:
+  run-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+      statuses: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # super-linter needs full history to work out which files changed.
+          fetch-depth: 0
+
+      - name: Lint Code Base
+        uses: super-linter/super-linter@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: "main"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ruff's formatter and Black are both on by default and disagree
+          # on edge cases (super-linter's own docs warn against running
+          # both). Black covers formatting; ruff's linter stays enabled.
+          VALIDATE_PYTHON_RUFF_FORMAT: false
+          # Biome targets JS/TS/CSS, none of which exist here. The only
+          # files it would touch are JSON, already covered by JSON_PRETTIER.
+          VALIDATE_BIOME_FORMAT: false
+          VALIDATE_BIOME_LINT: false
+          # shfmt wants tabs; this repo uses 4-space shell indentation
+          # consistently. Shell correctness is covered by shellcheck, both
+          # here and via `make shellcheck` in release.yml, so this would be
+          # style noise only.
+          VALIDATE_SHELL_SHFMT: false
+          # Repo-wide policy findings rather than branch-level defects:
+          # every third-party action here is SHA-pinned (see the uses:
+          # lines), and what these two flag beyond that is the combined
+          # write permission a release job legitimately needs. A considered
+          # choice, not a bug, and not worth a config file per tool.
+          VALIDATE_CHECKOV: false
+          VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
+          # Checks correctly-spelled words against a fixed house style
+          # unrelated to this project (it wants lowercase "readme" over the
+          # actual filename README). Real spelling is covered by
+          # SPELL_CODESPELL.
+          VALIDATE_NATURAL_LANGUAGE: false

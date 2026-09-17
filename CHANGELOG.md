@@ -39,6 +39,13 @@ Initial packaging. Nothing released yet.
   `"GLIBCXX_3.4.29".startswith("GLIBC_")` is false, so the C++ requirements were silently
   dropped and the tool reported `max_glibc=2.17` — "runs anywhere" — for binaries that
   cannot start on DSM 7.1.
+- CI: build and validate every architecture on each push and pull request; publish a
+  release with `SHA256SUMS` on a tag; super-linter; a tokenless Semgrep scan; and a weekly
+  upstream check that opens a version-bump PR when philippe44/SpotConnect publishes a new
+  release. That last one exists because the sibling project sat two years behind upstream
+  without anyone noticing. The bump PR is never auto-merged, and it names the Linux
+  architectures present in the new upstream archive so a changed build matrix is visible
+  before merging rather than after.
 - Documentation: README plus `doc/OVERVIEW.md`, `doc/ARCHITECTURES.md`, `doc/CONFIG.md`,
   `doc/TROUBLESHOOTING.md`, `doc/BUILD.md`.
 

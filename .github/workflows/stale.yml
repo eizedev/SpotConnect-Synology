@@ -1,0 +1,28 @@
+name: "Close stale issues and PRs"
+on:
+  schedule:
+    - cron: "30 1 * * *"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11
+        with:
+          stale-issue-message: "This issue is stale because it has been open 30 days with no activity. Remove the stale label or comment, or it will be closed in 5 days."
+          stale-pr-message: "This PR is stale because it has been open 45 days with no activity. Remove the stale label or comment to keep it open - stale PRs are never closed automatically."
+          close-issue-message: "This issue was closed because it stayed stale for 5 days with no activity. Comment if it is still relevant and it will be reopened."
+          stale-issue-label: "no-issue-activity"
+          exempt-issue-labels: "awaiting-approval,work-in-progress,breaking-change,upstream"
+          stale-pr-label: "no-pr-activity"
+          days-before-stale: 30
+          days-before-close: 5
+          # Never auto-close PRs. The stale-pr-message above says so
+          # explicitly, because promising a closure that never happens is
+          # exactly the kind of thing that erodes trust in a bot.
+          days-before-pr-close: -1
