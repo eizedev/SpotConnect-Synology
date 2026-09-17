@@ -38,6 +38,10 @@ they go: a directory with mode `0700`, owned by the unprivileged `spotconnect` u
 daemons run as, re-asserted on every start. Anyone with root on the NAS can read them
 regardless; that is inherent.
 
+Upstream fixed the file mode in 0.20.9 ([#76](https://github.com/philippe44/SpotConnect/issues/76)),
+verified on real hardware. This package still ships 0.20.8, so the description above is
+what you get today; the restricted directory stays either way.
+
 These tokens are device credentials issued by Spotify, not account credentials. They
 cannot be used to sign in to the account. That is a reason to store them rather than a
 password, not a reason to treat them casually.

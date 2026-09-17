@@ -98,8 +98,8 @@ Connect device only exists while its bridge runs:
 
 What the package adds beyond "the binary, but on a NAS": a wizard instead of command-line
 flags, tuned defaults instead of upstream's bare ones, log rotation, a restricted
-directory for the Spotify tokens that upstream writes world-readable, and config that
-survives upgrades.
+directory for the Spotify tokens that upstream writes world-readable (fixed upstream in
+0.20.9, which this package does not ship yet), and config that survives upgrades.
 
 ## Running this alongside AirConnect
 

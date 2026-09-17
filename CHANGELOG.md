@@ -75,10 +75,15 @@ this build at all - see Known issues below.
   [SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78). The same crash
   affects AirConnect's static builds on the same hardware, so it is not specific to this
   project.
-- Two smaller upstream reports from the same work:
-  [#76](https://github.com/philippe44/SpotConnect/issues/76) (credential files written
-  world-readable) and [#77](https://github.com/philippe44/SpotConnect/issues/77) (`-t`
-  exits 1 on success).
+  Upstream has looked at it and has no fix yet, having not changed its build tools.
+- Three further upstream reports from the same work, **all fixed in upstream 0.20.9**
+  and verified on real hardware here — but 0.20.9 is still a pre-release upstream, so
+  this package continues to ship 0.20.8 and the behaviour below is what it has today:
+  [#76](https://github.com/philippe44/SpotConnect/issues/76) credential files written
+  world-readable (the package's `0700` directory covers this, and will remain as a second
+  layer), [#77](https://github.com/philippe44/SpotConnect/issues/77) `-t` exiting 1 on
+  success, and [#79](https://github.com/philippe44/SpotConnect/issues/79) the built-in
+  Spotify client credentials being written into generated config files in clear text.
 
 ### Notes on things done differently from AirConnect-Synology
 

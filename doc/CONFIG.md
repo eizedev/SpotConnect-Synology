@@ -135,6 +135,10 @@ That discovers your players, writes the file and exits. Copy the parts you need 
 > config into a forum thread or a bug report, strip those two tags first. The package's own
 > `config-upnp.xml` / `config-raop.xml` do not contain them: they are created as empty
 > skeletons, and nothing here runs `-i` or `-I` on your behalf.
+>
+> Upstream stopped writing those two tags in 0.20.9
+> ([#79](https://github.com/philippe44/SpotConnect/issues/79), confirmed on hardware).
+> This package still ships 0.20.8, so check before sharing until it updates.
 
 ## What is deliberately not configurable
 
