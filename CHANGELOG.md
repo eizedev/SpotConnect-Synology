@@ -8,6 +8,8 @@ config handling. For changes to `spotupnp`/`spotraop` themselves, see the upstre
 
 ## [Unreleased]
 
+## [0.20.8-20260917] - 2026-09-17
+
 Initial packaging. Nothing released yet.
 
 ### Added
