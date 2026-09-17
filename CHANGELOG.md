@@ -8,7 +8,22 @@ config handling. For changes to `spotupnp`/`spotraop` themselves, see the upstre
 
 ## [Unreleased]
 
-Initial packaging. Nothing released yet.
+### Fixed
+
+- The release and release-date badges showed "no releases or repo not found" even though a
+  release existed: GitHub's "latest release" deliberately skips pre-releases, and so do the
+  default shields.io badges. They now use `?include_prereleases` and the `release-date-pre`
+  variant, and links point at the releases list rather than through `/releases/latest`,
+  which currently redirects to that list anyway.
+- A tag ending in `-pre`, `-rc*`, `-beta*` or `-alpha*` now publishes as a GitHub
+  pre-release on its own. The first one had to be marked by hand after the fact.
+
+## [0.20.8-20260917-pre] - 2026-09-17
+
+First release, deliberately published as a **pre-release**. The packaging is complete and
+verified end to end on a DS923+ (DSM 7.4.1), but compatibility beyond that one device is
+largely unmeasured, and an upstream problem decides whether older Synology hardware can run
+this build at all - see Known issues below.
 
 ### Added
 
