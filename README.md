@@ -1,8 +1,8 @@
 # SpotConnect package for Synology NAS and Synology Router
 
-| Release                                                                                                                                             | Release date                                                                                                                                                | Downloads                                                                                                                                            |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![Release](https://img.shields.io/github/v/release/eizedev/SpotConnect-Synology)](https://github.com/eizedev/SpotConnect-Synology/releases/latest) | [![Release date](https://img.shields.io/github/release-date/eizedev/SpotConnect-Synology)](https://github.com/eizedev/SpotConnect-Synology/releases/latest) | [![Downloads](https://img.shields.io/github/downloads/eizedev/SpotConnect-Synology/total)](https://github.com/eizedev/SpotConnect-Synology/releases) |
+| Release                                                                                                                                                          | Release date                                                                                                                                             | Downloads                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Release](https://img.shields.io/github/v/release/eizedev/SpotConnect-Synology?include_prereleases)](https://github.com/eizedev/SpotConnect-Synology/releases) | [![Release date](https://img.shields.io/github/release-date-pre/eizedev/SpotConnect-Synology)](https://github.com/eizedev/SpotConnect-Synology/releases) | [![Downloads](https://img.shields.io/github/downloads/eizedev/SpotConnect-Synology/total)](https://github.com/eizedev/SpotConnect-Synology/releases) |
 
 | License                                                                                         | Lint                                                                                                                                                                            | Security scan                                                                                                                                                                        | Issues                                                                                                                                     |
 | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -18,18 +18,23 @@ Your NAS holds the stream, not your phone — so the music keeps playing when yo
 of the door, and anyone in the house can take over from any Spotify app, Android
 included.
 
-> **No release published yet.** The package builds and runs, but the first release is
-> being held until there is word on
-> [upstream #78](https://github.com/philippe44/SpotConnect/issues/78) — that issue decides
-> whether older Synology devices can run this at all, and it would be better for the first
-> release to cover the whole range than a slice of it. In the meantime you can
-> [build it yourself](doc/BUILD.md), or watch the repository to hear when it lands.
+> **Pre-release.** The first release is published as a
+> [pre-release](https://github.com/eizedev/SpotConnect-Synology/releases) rather
+> than a final one, because compatibility beyond one tested device is largely unmeasured.
 >
-> **What is verified:** a DS923+ (DSM 7.4.1) runs both bridges, speakers appear
-> individually in Spotify, playback works, control transfers between devices, playback
-> survives the controlling phone going offline, and it runs alongside AirConnect without
-> conflict. **Not yet verified:** whether Spotify Free works, and CPU cost on older
-> models — the two defaults marked _provisional_ below depend on the latter.
+> **Verified** on a DS923+ (DSM 7.4.1): both bridges start, speakers appear individually
+> in Spotify, playback works, control transfers between devices and between people,
+> playback survives the controlling phone going offline, and it runs alongside AirConnect
+> with no port conflict.
+>
+> **Not verified:** whether Spotify Free works, and what re-encoding costs on an older
+> NAS — the two defaults marked _provisional_ below depend on the latter. Older devices
+> may not be able to run this build at all; see
+> [Which package do I need?](#which-package-do-i-need), and
+> [upstream #78](https://github.com/philippe44/SpotConnect/issues/78) for why.
+>
+> If it works, or does not, on a device not listed above, saying so in an issue is the
+> single most useful thing you can contribute right now.
 
 ## Table of contents
 
@@ -154,8 +159,7 @@ the same way a Spotify Connect speaker you bought would.
    page — or just try `x86_64` first if you have any recent Intel/AMD-based NAS, which is
    by far the most common case.
 2. Download the matching `SpotConnect-dsm7-<architecture>-<version>.spk` from the
-   [latest release](https://github.com/eizedev/SpotConnect-Synology/releases/latest) —
-   or, until the first one is published, [build it yourself](doc/BUILD.md).
+   [latest release](https://github.com/eizedev/SpotConnect-Synology/releases).
 3. Install it (see [Install](#install)).
 
 **Running a Synology Router (SRM)?** Use the `arm` package.
