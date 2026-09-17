@@ -3,9 +3,9 @@
 Two validators, both dependency-free so they run in CI without any install
 step. Neither needs a Synology device.
 
-| Script | Checks |
-|---|---|
-| `validate_elf.py` | Each packaged binary is a well-formed ELF for the architecture it is being shipped as, and reports its interpreter, minimum kernel and highest referenced glibc symbol version. |
+| Script            | Checks                                                                                                                                                                                   |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `validate_elf.py` | Each packaged binary is a well-formed ELF for the architecture it is being shipped as, and reports its interpreter, minimum kernel and highest referenced glibc symbol version.          |
 | `validate_spk.sh` | A built `.spk` has every required member, an `INFO` with no unsubstituted `#PLACEHOLDER#` left in it, executable payload binaries, lifecycle scripts with shebangs, and valid icon PNGs. |
 
 ## Why these exist
