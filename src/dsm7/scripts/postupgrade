@@ -25,6 +25,18 @@ done
 mkdir -p "${CREDENTIALS_DIR}" 2>>"${LOG}" || true
 chmod 700 "${CREDENTIALS_DIR}" 2>>"${LOG}" || true
 
+# One-shot action from the upgrade wizard, not a stored setting: the only way
+# to re-acquire a Spotify sign-in is to discard the old one and let the next
+# playback issue a fresh token. This is the GUI path for "I switched Spotify
+# accounts" or "this speaker stopped responding"; the alternatives are
+# reinstalling the package, or deleting the files over SSH.
+# shellcheck disable=SC2154
+if [ "${pkgwizard_forget_credentials}" = "true" ]; then
+    echo "[$(date +'%T')] Forgetting stored Spotify sign-ins on user request" >>"${LOG}"
+    rm -f "${CREDENTIALS_DIR}"/*.json 2>>"${LOG}" || true
+    echo "Stored Spotify sign-ins were cleared. Play to each speaker once from a Spotify app to sign it in again." >>"${SYNOPKG_TEMP_LOGFILE}"
+fi
+
 # Backfill keys added since the config was written, so an upgrade from an
 # older package never leaves start-stop-status reading an unset variable
 # under "set -u". Values match the defaults in postinst.
