@@ -7,5 +7,6 @@ src/dsm7/bin/**
 
 # Local AI assistant config/memory - must never be published in this public repo
 CLAUDE.md
+CLAUDE.local.md
 AGENTS.md
 .claude/
