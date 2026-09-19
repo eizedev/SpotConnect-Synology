@@ -8,6 +8,28 @@ config handling. For changes to `spotupnp`/`spotraop` themselves, see the upstre
 
 ## [Unreleased]
 
+### Added
+
+- **Older DSM releases can now run the package.** SpotConnect needs `GLIBCXX_3.4.29`, which
+  DSM only ships from later 7.x releases, and the `-static` builds are no way out on older
+  kernels ([SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78)). The
+  dynamic `x86_64`, `x86` and `aarch64` packages now bundle a matching libstdc++, and
+  `start-stop-status` switches to it only when the device's own is too old - decided by an
+  actual run, not by comparing versions, so a current DSM keeps its system library. Verified
+  end to end on a DS415+ with DSM 7.1.1, which previously could run neither build: installed
+  through Package Center, started, played. Adds roughly half a megabyte per package; the
+  library is stripped in CI from about 12 MB to about 1.7 MB.
+
+  Pinned by commit and SHA256 in `libstdcxx.json`, like `upstream.json`. Only libstdc++ is
+  bundled, never glibc. Ships with its licence (GPLv3 with the GCC Runtime Library
+  Exception) and a pointer to its exact source. `validate_spk.sh` checks the library
+  matches its package's architecture, and CI fails if a package's library presence
+  disagrees with the pin file. Not bundled for `arm` (the only available build predates a
+  thread-safety fix in the upstream toolchain), `armv5` or `powerpc` (untested).
+
+- Troubleshooting now covers a speaker appearing twice in Spotify when SpotConnect runs on
+  two machines on the same network.
+
 ### Fixed
 
 - The release and release-date badges showed "no releases or repo not found" even though a

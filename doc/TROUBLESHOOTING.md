@@ -65,13 +65,18 @@ Read the package's own log first (`synopkg log SpotConnect`) — it checks the b
 starting and names the reason. There are two distinct failures, with different answers.
 
 **`version 'GLIBCXX_3.4.29' not found`** — your DSM ships a libstdc++ older than the
-dynamic build needs. Install the **`-static`** package of the same architecture instead; it
-carries its own C++ library.
+dynamic build needs. On `x86_64`, `x86` and `aarch64` you should not see this as a failure:
+the package brings a matching library and switches to it by itself, and the log says
+_"using the copy bundled with the package"_. If you do see it as a failure there, please
+open an issue — something about your device differs from what was tested. On `arm`,
+`armv5` and `powerpc` there is no bundled library yet, so install the **`-static`** package
+of the same architecture instead; it carries its own.
 
 **Killed by a signal immediately on startup, with no message** — the binary segfaults
 before it runs. This affects the `-static` builds on kernels below 4.4.255, and nothing in
-the package can work around it. Measured on a DS415+ (kernel 3.10.108) and an RT2600ac
-(4.4.60); a DS923+ (4.4.302+) is fine. Reported upstream as
+the package can work around it. Measured on an RT2600ac (kernel 4.4.60) and a DS415+
+(3.10.108); a DS923+ (4.4.302+) is fine. The DS415+ is unaffected in practice, because its
+dynamic package runs with the bundled library. Reported upstream as
 [SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78) — if you hit this,
 adding your model, DSM version and `uname -r` there is genuinely useful.
 
@@ -126,6 +131,27 @@ For an **Apple TV** you need a one-time pairing key. Run `spotraop` interactivel
 `-l` and follow the prompts; it writes a `<raop_credentials>` value to use afterwards.
 Note that `-l` means something completely different in `spotupnp` — see
 [CONFIG.md](CONFIG.md).
+
+## The same speaker appears twice in Spotify
+
+Two different things produce this, and only one of them needs fixing.
+
+**`Living Room` and `Living Room+`** — expected when AirConnect runs on the same network.
+The plain one is the AirPlay target, the one with `+` is the Spotify Connect device. See
+the README on how the two differ.
+
+**`Living Room+` twice** — SpotConnect is running on two machines on the same network,
+for example two NAS. Each one finds the same speakers and announces its own Spotify Connect
+device for each, under the same name, so Spotify has no way to tell them apart and neither
+do you. Either run it on one machine only, or give one of them a distinct name by setting,
+in its `spotconnect.conf`:
+
+```sh
+SPOTUPNP_NAME_FORMAT="%s+ (NAS 2)"
+SPOTRAOP_NAME_FORMAT="%s+ (NAS 2)"
+```
+
+and restart the package.
 
 ## I run AirConnect too, and something is conflicting
 

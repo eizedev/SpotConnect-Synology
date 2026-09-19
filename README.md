@@ -28,10 +28,9 @@ included.
 > with no port conflict.
 >
 > **Not verified:** whether Spotify Free works, and what re-encoding costs on an older
-> NAS — the two defaults marked _provisional_ below depend on the latter. Older devices
-> may not be able to run this build at all; see
-> [Which package do I need?](#which-package-do-i-need), and
-> [upstream #78](https://github.com/philippe44/SpotConnect/issues/78) for why.
+> NAS — the two defaults marked _provisional_ below depend on the latter. Synology Routers
+> and other 32-bit ARM devices on an older kernel cannot run it yet; see
+> [Which package do I need?](#which-package-do-i-need).
 >
 > If it works, or does not, on a device not listed above, saying so in an issue is the
 > single most useful thing you can contribute right now.
@@ -171,13 +170,14 @@ the same way a Spotify Connect speaker you bought would.
 **Full architecture matrix and the `-static` fallback:** see
 [doc/ARCHITECTURES.md](doc/ARCHITECTURES.md).
 
-> **Older devices may not work at all.** The dynamic build needs a libstdc++ that older
-> DSM releases do not ship, and the `-static` build — normally the answer to that — crashes
-> on kernels below 4.4.255 ([upstream #78](https://github.com/philippe44/SpotConnect/issues/78)).
-> Measured: a DS923+ on DSM 7.4.1 works, a DS415+ on DSM 7.1.1 and an RT2600ac on SRM 1.3.2
-> do not. The package detects all of this at start and tells you which case you are in, in
-> plain words. See [doc/ARCHITECTURES.md](doc/ARCHITECTURES.md) before assuming your device
-> is supported.
+> **Older DSM releases are covered.** SpotConnect needs a newer C++ library than older DSM
+> releases ship. For `x86_64`, `x86` and `aarch64` the package brings its own and switches to
+> it automatically when needed — verified on a DS415+ running DSM 7.1.1, which could not run
+> this at all before. **Synology Routers and other 32-bit ARM devices on an older kernel
+> cannot run it yet**; that depends on an upstream fix
+> ([#78](https://github.com/philippe44/SpotConnect/issues/78)). The package checks at start
+> and tells you in plain words if your device is affected. Details in
+> [doc/ARCHITECTURES.md](doc/ARCHITECTURES.md).
 
 ## Install
 
@@ -301,10 +301,10 @@ are not exposed here: [doc/CONFIG.md](doc/CONFIG.md).
   matters on older models has not been measured yet.
 - **This is an unofficial, reverse-engineered Spotify integration.** It is not endorsed
   by Spotify, and a change on their side can break it without warning.
-- **Some older devices cannot run this at all.** Not a packaging limitation: the dynamic
-  build needs `GLIBCXX_3.4.29` and the `-static` build segfaults on kernels below 4.4.255.
-  Confirmed on a DS415+ and an RT2600ac; reported upstream as
-  [#78](https://github.com/philippe44/SpotConnect/issues/78). See
+- **Synology Routers and other 32-bit ARM devices on an older kernel cannot run this
+  yet.** Older DSM releases on `x86_64`, `x86` and `aarch64` are covered by a bundled C++
+  library; 32-bit ARM is not, pending an upstream rebuild. Confirmed on an RT2600ac;
+  tracked upstream as [#78](https://github.com/philippe44/SpotConnect/issues/78). See
   [doc/ARCHITECTURES.md](doc/ARCHITECTURES.md).
 
 ## Building from source

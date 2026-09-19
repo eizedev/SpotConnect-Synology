@@ -25,60 +25,90 @@ page and match it below.
 All packages declare `os_min_ver` 7.0-40000, i.e. **DSM 7 and newer**. There is no DSM 5/6
 line for this package.
 
-## Which variant — and the honest answer that some devices have none
+## Which variant — and what the package does for older DSM
 
-Every architecture ships in two builds, dynamic and `-static`. Choosing between them is
-unfortunately not a formality for this package, and on some older devices neither works.
+Every architecture ships in two builds, dynamic and `-static`. For most devices the dynamic
+one is the right choice, including many older ones, because of what it brings along.
 
-Two independent constraints are in play.
-
-### 1. The dynamic builds need a recent libstdc++
+### 1. The dynamic builds need a recent libstdc++ — the package supplies one
 
 `spotupnp` and `spotraop` are C++ (upstream builds on cspot), and the dynamic builds
 reference **`GLIBCXX_3.4.29`** — a libstdc++ symbol version that only exists from
-libstdc++ 6.0.29 (GCC 11) onwards. DSM ships libstdc++ with the OS, so this is decided by
-your DSM release:
+libstdc++ 6.0.29 (GCC 11) onwards. DSM ships libstdc++ with the OS, and older releases ship
+an older one:
 
 ```text
 /volume1/@appstore/SpotConnect/spotupnp: /lib64/libstdc++.so.6:
 version `GLIBCXX_3.4.29' not found (required by .../spotupnp)
 ```
 
+**For `x86_64`, `x86` and `aarch64`, the dynamic package handles this itself.** It carries
+a matching libstdc++ and, at every start, first tries the device's own. Only if that fails
+on `GLIBCXX` does it switch to the bundled copy — so a device with a current DSM keeps
+using its system library untouched, and an older one just works. The package log says
+which it chose:
+
+```text
+The device's libstdc++ is too old for spotupnp; using the copy bundled with the package.
+```
+
+Only libstdc++ is bundled, never the C library: the device's own glibc is what matches its
+kernel. The library comes from the same toolchain that builds the SpotConnect binaries; see
+[`src/dsm7/libstdcxx-licence/README.md`](../src/dsm7/libstdcxx-licence/README.md) for its
+licence (GPLv3 with the GCC Runtime Library Exception) and source.
+
+**No bundled library for `arm`, `armv5` or `powerpc`**, for different reasons:
+
+- `arm` (32-bit ARMv7): the only build available predates a fix in the upstream toolchain
+  for C++ exceptions thrown in threads, which can crash on 32-bit ARM. Bundling it would
+  trade one failure for a rarer, harder-to-diagnose one. Waiting on a rebuild upstream.
+- `armv5`: the closest available build targets ARMv6, whose instructions ARMv5 CPUs do not
+  have.
+- `powerpc`: a matching build exists, but there is no hardware here to test it on.
+
 ### 2. The static builds crash on older kernels
 
-The `-static` builds carry their own C and C++ libraries, which solves the above — but on
-kernels below the 4.4.255 the binaries declare, they terminate with `SIGSEGV` immediately
-on startup, before printing anything. Reported upstream as
+The `-static` builds carry their own C and C++ libraries — but on kernels below the
+4.4.255 the binaries declare, they terminate with `SIGSEGV` immediately on startup, before
+printing anything. Upstream's toolchain targets kernel 4.4 or newer, and a statically
+linked C library is built for exactly that. Reported upstream as
 [SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78).
+
+This is also why bundling works where `-static` does not: the dynamic package uses the
+device's own C library, which matches its kernel, and only brings the C++ library along.
 
 ### Measured on real hardware
 
-| Device   | DSM/SRM   | Kernel   | libstdc++ | Dynamic        | `-static`  |
-| -------- | --------- | -------- | --------- | -------------- | ---------- |
-| DS923+   | DSM 7.4.1 | 4.4.302+ | 6.0.31    | **works**      | works      |
-| DS415+   | DSM 7.1.1 | 3.10.108 | 6.0.25    | no (`GLIBCXX`) | no (crash) |
-| RT2600ac | SRM 1.3.2 | 4.4.60   | older     | no (`GLIBCXX`) | no (crash) |
+| Device   | DSM/SRM   | Kernel   | libstdc++ | Dynamic package                 | `-static`  |
+| -------- | --------- | -------- | --------- | ------------------------------- | ---------- |
+| DS923+   | DSM 7.4.1 | 4.4.302+ | 6.0.31    | **works** (system library)      | works      |
+| DS415+   | DSM 7.1.1 | 3.10.108 | 6.0.25    | **works** (bundled libstdc++)   | no (crash) |
+| RT2600ac | SRM 1.3.2 | 4.4.60   | older     | no — `arm`, nothing bundled yet | no (crash) |
+
+The DS415+ was verified end to end: installed through Package Center, started, found its
+speakers, and played. The bundled libraries for `x86` and `aarch64` are checked in CI to
+match their packages' architecture, but have not been run on a real 32-bit x86 or aarch64
+Synology — reports welcome.
 
 ### So which do I install?
 
-1. **Install the dynamic package first.** On a current DSM it simply works, and it is half
-   the size.
-2. **If it reports a missing `GLIBCXX` version, install the `-static` package instead.**
-   This is the case it genuinely rescues: a device new enough to have a 4.4.255+ kernel but
-   running a DSM release whose libstdc++ is too old.
-3. **If the `-static` package then dies without a message, this device cannot run
-   SpotConnect 0.20.8 at all.** That is not something the packaging can work around, and
-   it is what upstream issue #78 is about.
+1. **Install the dynamic package.** On a current DSM it uses the system library; on an older
+   one, for `x86_64`, `x86` and `aarch64`, it uses the one it brought. Either way there is
+   nothing to configure.
+2. **On `arm`, `armv5` or `powerpc`, if it reports a missing `GLIBCXX` version, try the
+   `-static` package.** That helps on a device whose kernel is 4.4.255 or newer.
+3. **If the `-static` package dies without a message, this device cannot run SpotConnect
+   0.20.8 yet.** Today that means Synology Routers such as the RT2600ac, and other `arm`
+   devices on an older kernel.
 
 You do not have to work this out by reading logs: the package checks before starting and
-says which of these three cases you are in, in plain words, in Package Center and in its
-own log.
+says what happened, in plain words, in Package Center and in its own log.
 
 To check in advance over SSH:
 
 ```sh
 uname -r                                              # needs to be >= 4.4.255 for -static
-grep -ao "GLIBCXX_3.4.29" /lib*/libstdc++.so.6 | head -1   # output means dynamic will load
+grep -ao "GLIBCXX_3.4.29" /lib*/libstdc++.so.6 | head -1   # output means the system library suffices
 ```
 
 The `-static` packages for `arm`, `aarch64` and `powerpc` additionally declare `noarch`,
