@@ -114,6 +114,31 @@ check_one() {
                 fi
             done
             [ -d "$pdir/log" ] || warn "package.tgz missing log/ placeholder directory"
+
+            # Bundled libstdc++ (dynamic x86_64/x86/aarch64 builds only). Its
+            # ELF class, byte order and machine must match the binaries it
+            # serves - comparing the raw header bytes against spotupnp in the
+            # same package catches a library copied into the wrong
+            # architecture's package, whatever that architecture is.
+            lib="$pdir/lib/libstdc++.so.6"
+            if [ -e "$lib" ]; then
+                if [ "$(od -An -tx1 -N4 "$lib" | tr -d ' \n')" != "7f454c46" ]; then
+                    fail "lib/libstdc++.so.6 is not an ELF file"
+                elif [ -f "$pdir/spotupnp" ]; then
+                    lib_id=$(od -An -tx1 -j4 -N2 "$lib" | tr -d ' \n')$(od -An -tx1 -j18 -N2 "$lib" | tr -d ' \n')
+                    bin_id=$(od -An -tx1 -j4 -N2 "$pdir/spotupnp" | tr -d ' \n')$(od -An -tx1 -j18 -N2 "$pdir/spotupnp" | tr -d ' \n')
+                    if [ "$lib_id" != "$bin_id" ]; then
+                        fail "lib/libstdc++.so.6 is built for a different machine than spotupnp (class/data/machine $lib_id vs $bin_id)"
+                    else
+                        echo "  bundled libstdc++: matches the binaries ($(wc -c <"$lib" | tr -d ' ') bytes)"
+                    fi
+                fi
+                # GPLv3 object code: the licence and the source pointer must
+                # travel with it (see src/dsm7/libstdcxx-licence/README.md).
+                for f in COPYING3 COPYING.RUNTIME README.md; do
+                    [ -f "$pdir/lib/$f" ] || fail "lib/ bundles libstdc++ but is missing $f"
+                done
+            fi
         fi
     fi
 

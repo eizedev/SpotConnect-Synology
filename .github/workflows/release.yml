@@ -124,6 +124,15 @@ jobs:
           echo "Using SpotConnect ${UPSTREAM_TAG} (pinned in upstream.json)"
           ls -l "${GITHUB_WORKSPACE}"/src/dsm7/bin/
 
+      # llvm-strip handles ELF for every target architecture, which GNU strip
+      # on the runner does not - without it the bundled libraries ship
+      # unstripped and several times larger.
+      - name: Install llvm-strip
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq llvm
+
+      - name: Fetch bundled libstdc++ (pinned in libstdcxx.json)
+        run: cd "${GITHUB_WORKSPACE}"/src/dsm7 && ./fetch-libstdcxx.sh
+
       - name: Run shellcheck
         run: cd "${GITHUB_WORKSPACE}"/src/dsm7 && make shellcheck
 
@@ -154,6 +163,17 @@ jobs:
             tar -xzf "$workdir/package.tgz" -C "$workdir"
             python3 tests/validate_elf.py --arch "${arch}" \
               "$workdir/spotupnp" "$workdir/spotraop" || FAIL=1
+            # The architectures pinned in libstdcxx.json must ship the bundled
+            # libstdc++ in their dynamic package, and nothing else may. Read
+            # from the pin file itself so the two cannot drift apart - and so
+            # a build that silently drops the library fails here instead of
+            # on a user's older NAS.
+            if jq -e --arg a "$arch" '.members[$a]' libstdcxx.json >/dev/null; then want=yes; else want=no; fi
+            if [ -e "$workdir/lib/libstdc++.so.6" ]; then have=yes; else have=no; fi
+            if [ "$want" != "$have" ]; then
+              echo "::error::${spk}: bundled libstdc++ expected=${want} present=${have}"
+              FAIL=1
+            fi
             rm -rf "$workdir"
             echo "::endgroup::"
           done
