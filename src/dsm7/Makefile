@@ -20,8 +20,18 @@ target/package.tgz: target
 	cp bin/spotraop-linux-${ARCH} target/spotraop
 	chmod +x target/spotraop
 	cp -a log target/log
-	cd target && tar czf package.tgz spotupnp spotraop log/
-	rm -r target/spotupnp target/spotraop target/log
+	# Bundled libstdc++ for devices whose DSM ships one too old (see
+	# fetch-libstdcxx.sh). Dynamic builds only - a -static build carries its
+	# own - and only for architectures fetch-libstdcxx.sh provides, so e.g.
+	# ARCH=x86_64-static or ARCH=arm simply finds nothing here and skips it.
+	# The licence and source pointer travel with the library.
+	if [ -f "libstdcxx/${ARCH}/libstdc++.so.6" ]; then \
+		mkdir -p target/lib && \
+		cp libstdcxx/${ARCH}/libstdc++.so.6 target/lib/ && \
+		cp libstdcxx-licence/* target/lib/ ; \
+	fi
+	cd target && tar czf package.tgz spotupnp spotraop log/ $$( [ -d lib ] && echo lib/ )
+	rm -rf target/spotupnp target/spotraop target/log target/lib
 
 target/scripts: target
 	cp -a scripts target
@@ -165,4 +175,4 @@ build-all: clean-dist
 .PHONY: shellcheck
 shellcheck:
 	shellcheck -s sh scripts/* WIZARD_UIFILES/*
-	shellcheck -s bash build.sh
+	shellcheck -s bash build.sh fetch-libstdcxx.sh

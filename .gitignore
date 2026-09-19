@@ -4,6 +4,7 @@ package.tgz
 target/
 dist/
 src/dsm7/bin/**
+src/dsm7/libstdcxx/
 
 # Local AI assistant config/memory - must never be published in this public repo
 CLAUDE.md

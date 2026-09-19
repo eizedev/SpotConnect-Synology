@@ -156,14 +156,59 @@ ensure_configs() {
 # So detect success positively, by the licence text appearing. If it does
 # not, the loader wrote its error instead, and that error is exactly what
 # the user needs to see.
-preflight() {
-    _bin="$1"
-    # Assignment form keeps this safe under "set -e": a non-zero status from
-    # the command substitution would otherwise abort the script.
-    if _out=$("${SYNOPKG_PKGDEST}/${_bin}" -t 2>&1); then _rc=0; else _rc=$?; fi
+# Where a bundled libstdc++ lives, if this package brought one (dynamic
+# x86_64/x86/aarch64 builds do - see fetch-libstdcxx.sh). BUNDLED_LIBDIR stays
+# empty unless the preflight below finds the device's own libstdc++ too old
+# and the bundled one works instead, so a device with a current DSM keeps
+# using its system library untouched.
+BUNDLED_LIB="${SYNOPKG_PKGDEST}/lib/libstdc++.so.6"
+BUNDLED_LIBDIR=""
 
+# Run a program with the bundled libstdc++ only when the preflight chose it.
+# LD_LIBRARY_PATH is never set to an empty value: the dynamic loader treats
+# an empty entry as the current directory, which is not something to hand a
+# long-running daemon.
+run_bin() {
+    if [ -n "${BUNDLED_LIBDIR}" ]; then
+        LD_LIBRARY_PATH="${BUNDLED_LIBDIR}" "$@"
+    else
+        "$@"
+    fi
+}
+
+# One "-t" run, output in _out and exit status in _rc. Succeeds when the
+# licence text appears - see preflight() for why the exit status is useless.
+# Assignment form keeps this safe under "set -e": a non-zero status from the
+# command substitution would otherwise abort the script.
+probe() {
+    if _out=$(run_bin "${SYNOPKG_PKGDEST}/$1" -t 2>&1); then _rc=0; else _rc=$?; fi
     case "${_out}" in
     *"free software"*) return 0 ;;
+    esac
+    return 1
+}
+
+preflight() {
+    _bin="$1"
+    probe "${_bin}" && return 0
+
+    # Too old a libstdc++ on the device is the one failure the package can
+    # fix by itself: retry once with the copy it brought. The decision is
+    # made by an actual run rather than by comparing version numbers, and it
+    # carries over to the second binary, which needs the same library.
+    case "${_out}" in
+    *GLIBCXX*)
+        if [ -z "${BUNDLED_LIBDIR}" ] && [ -f "${BUNDLED_LIB}" ]; then
+            _system_error="${_out}"
+            BUNDLED_LIBDIR="${SYNOPKG_PKGDEST}/lib"
+            if probe "${_bin}"; then
+                echo "[$(date +'%T')] The device's libstdc++ is too old for ${_bin}; using the copy bundled with the package." >>"$LOG"
+                echo "[$(date +'%T')]   (system library said: ${_system_error})" >>"$LOG"
+                return 0
+            fi
+            BUNDLED_LIBDIR=""
+        fi
+        ;;
     esac
 
     # A binary that dies before printing anything is the case that matters
@@ -226,7 +271,7 @@ start_spotupnp() {
     if [ "${SPOTCONNECT_CREDENTIALS_ENABLED:-1}" = "1" ]; then set -- "$@" -J "${CREDENTIALS_DIR}"; fi
 
     echo "[$(date +'%T')] Starting spotupnp on ${SYNO_IP}:${SPOTUPNP_PORT}" >>"$LOG"
-    "${SYNOPKG_PKGDEST}/spotupnp" "$@" 2>&1
+    run_bin "${SYNOPKG_PKGDEST}/spotupnp" "$@" 2>&1
 }
 
 start_spotraop() {
@@ -241,7 +286,7 @@ start_spotraop() {
     if [ "${SPOTCONNECT_CREDENTIALS_ENABLED:-1}" = "1" ]; then set -- "$@" -J "${CREDENTIALS_DIR}"; fi
 
     echo "[$(date +'%T')] Starting spotraop on ${SYNO_IP}" >>"$LOG"
-    "${SYNOPKG_PKGDEST}/spotraop" "$@" 2>&1
+    run_bin "${SYNOPKG_PKGDEST}/spotraop" "$@" 2>&1
 }
 
 start_spotconnect() {

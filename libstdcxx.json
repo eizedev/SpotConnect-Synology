@@ -1,0 +1,14 @@
+{
+  "description": "libstdc++ bundled with the dynamic packages, for devices whose DSM ships one too old for GLIBCXX_3.4.29",
+  "source_repo": "philippe44/cross-compiling",
+  "commit": "c836c90899159f74225ab5357ac9c23d44ec2067",
+  "path": "GLIB.xz",
+  "sha256": "8fad036a8dcf5b89394ed5ee0581700c818af3fa6bd08281b6fae7da1a5135d5",
+  "gcc": "11.2.0",
+  "toolchain": "crosstool-NG 1.25.0",
+  "members": {
+    "x86_64": "x86_64-stretch/libstdc++.so.6.0.29",
+    "x86": "i686-stretch/libstdc++.so.6.0.29",
+    "aarch64": "aarch64-stretch/libstdc++.so.6.0.29"
+  }
+}
