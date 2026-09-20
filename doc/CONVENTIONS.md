@@ -56,12 +56,12 @@ library's licence and source pointer ship with it, since it is GPLv3 object code
 `src/dsm7/fetch-libstdcxx.sh` and `src/dsm7/libstdcxx-licence/README.md`.
 
 **`upstream.json`'s `tag` and `version` are used for different things.** In
-AirConnect-Synology the two have always been the same string. Upstream SpotConnect
-publishes pre-release tags such as `0.20.9-0` that carry version `0.20.9`, so here the
-files are fetched from the **tag**, while the package version and the "What's New" text
-use the **version** — which is what upstream's own `CHANGELOG` lists its entries under,
-and what the release tag is built from. `RELEASE_VERSION` only overrides the version for
-a local build; CI does not set it.
+AirConnect-Synology the two fields hold the same string, so nothing distinguishes them.
+Upstream SpotConnect publishes pre-release tags such as `0.20.9-0` that carry version
+`0.20.9`, so here the files are fetched from the **tag**, while the package version and
+the "What's New" text use the **version** — which is what upstream's own `CHANGELOG`
+lists its entries under, and what the release tag is built from. `RELEASE_VERSION`
+overrides the version for a local build; CI does not set it.
 
 **The default branch is `main`**, not `master`. Nothing in the tooling depends on the
 name: changelog links use `blob/HEAD`, which resolves to whichever branch a repository
@@ -72,17 +72,8 @@ What a Spotify Connect bridge does, and why you might want one when your speaker
 appear in the Spotify app via AirConnect, is not — so the reasoning gets its own page
 instead of a longer README.
 
-## No longer a difference
+## Not differences, just gaps
 
-**Process lookup** used to be listed here. Determining the `ps` invocation and its PID
-column together, and preferring `ps w` over bare `ps` on BusyBox, was worked out in this
-package and then ported back to AirConnect-Synology
-([its PR #237](https://github.com/eizedev/AirConnect-Synology/pull/237)). Both scripts now
-do the same thing, which is the intended outcome whenever something found here turns out
-to apply there as well.
-
-## Things this repository does not have yet
-
-Not deliberate differences, just not carried over: AirConnect-Synology also runs a pull
-request labeler (`.github/workflows/label.yml`, `.github/labeler.yml`), an image workflow
-and a `CODEOWNERS` file. Worth adopting if they earn their keep here.
+AirConnect-Synology also runs a pull request labeler
+(`.github/workflows/label.yml`, `.github/labeler.yml`), an image workflow and a
+`CODEOWNERS` file. There is no reason against them here; they are simply not set up yet.
