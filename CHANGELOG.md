@@ -36,6 +36,10 @@ is left out of that text like any other subsection.
 
 ### Internal
 
+- `build.sh` is POSIX `sh` again, like its counterpart in AirConnect-Synology, instead of
+  being declared and checked as bash although it uses no bash features. That leaves
+  `fetch-libstdcxx.sh` as the only bash script, which `doc/CONVENTIONS.md` now records
+  along with the reason.
 - `doc/CONVENTIONS.md` records where this package deliberately departs from
   AirConnect-Synology, whose own `doc/CONVENTIONS.md` describes the conventions the two
   share. The design notes that used to sit at the bottom of this file moved there, so the

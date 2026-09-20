@@ -55,6 +55,12 @@ works like `upstream.json` — commit plus SHA256, verified at build time — an
 library's licence and source pointer ship with it, since it is GPLv3 object code. See
 `src/dsm7/fetch-libstdcxx.sh` and `src/dsm7/libstdcxx-licence/README.md`.
 
+**One script is bash: `src/dsm7/fetch-libstdcxx.sh`.** The shared rule is POSIX `sh`
+checked with `shellcheck -s sh`, because the installer scripts run under BusyBox on
+routers. This one never reaches a device — it runs on a build machine or a CI runner —
+and uses `local` and substring expansion, so it declares bash and is checked as bash.
+Everything else here, installer scripts and `build.sh` alike, is POSIX `sh`.
+
 **`upstream.json`'s `tag` and `version` are used for different things.** In
 AirConnect-Synology the two fields hold the same string, so nothing distinguishes them.
 Upstream SpotConnect publishes pre-release tags such as `0.20.9-0` that carry version
