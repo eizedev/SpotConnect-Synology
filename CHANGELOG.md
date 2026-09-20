@@ -6,6 +6,13 @@ config handling. For changes to `spotupnp`/`spotraop` themselves, see the upstre
 (bundled in each release). Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+The first sentence of each entry in the newest release section becomes the "What's New"
+text Package Center shows for an update (see `src/dsm7/info_changelog.sh`), so lead with
+what changes for the person installing it. Only the Keep a Changelog categories
+(`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`) and `Known issues`
+are used; changes that don't affect the installed package go under `### Internal`, which
+is left out of that text like any other subsection.
+
 ## [Unreleased]
 
 ### Added
@@ -27,16 +34,21 @@ config handling. For changes to `spotupnp`/`spotraop` themselves, see the upstre
   disagrees with the pin file. Not bundled for `arm` (the only available build predates a
   thread-safety fix in the upstream toolchain), `armv5` or `powerpc` (untested).
 
-- Troubleshooting now covers a speaker appearing twice in Spotify when SpotConnect runs on
-  two machines on the same network.
+### Internal
 
-### Fixed
-
+- Package Center now shows a "What's New" text for an update, generated at build time by
+  `src/dsm7/info_changelog.sh` from the newest released section of this file plus
+  upstream's entries for the bundled version. Taken over unchanged from
+  AirConnect-Synology so both projects behave identically; everything project-specific is
+  an argument, and the Makefile derives names and URLs from `INFO` and `upstream.json`
+  rather than repeating them. `validate_spk.sh` now treats `INFO`'s `changelog` field as
+  mandatory, so a build that loses the text fails instead of shipping quietly.
+- Documentation: troubleshooting now covers a speaker appearing twice in Spotify when
+  SpotConnect runs on two machines on the same network.
 - The release and release-date badges showed "no releases or repo not found" even though a
   release existed: GitHub's "latest release" deliberately skips pre-releases, and so do the
   default shields.io badges. They now use `?include_prereleases` and the `release-date-pre`
-  variant, and links point at the releases list rather than through `/releases/latest`,
-  which currently redirects to that list anyway.
+  variant, and links point at the releases list rather than through `/releases/latest`.
 - A tag ending in `-pre`, `-rc*`, `-beta*` or `-alpha*` now publishes as a GitHub
   pre-release on its own. The first one had to be marked by hand after the fact.
 
@@ -49,27 +61,54 @@ this build at all - see Known issues below.
 
 ### Added
 
-- DSM 7 package built around upstream SpotConnect 0.20.8, pinned in `upstream.json` with
-  a SHA256 checksum verified against the downloaded asset. Twelve architecture packages:
+- DSM 7 package for upstream SpotConnect 0.20.8. The pinned release is verified against a
+  SHA256 checksum before anything is built from it. Twelve architecture packages:
   `arm`, `armv5`, `aarch64`, `powerpc`, `x86`, `x86_64`, each with a `-static` twin.
 - Install wizard for choosing `spotupnp`, `spotraop` or both, the bind address and the
   UPnP port.
-- Reusable Spotify sign-ins stored via upstream's `-J` into a package-private directory
-  with mode `0700`, owned by the unprivileged `spotconnect` user. Upstream writes those
+- Spotify sign-ins are stored so speakers stay in your device list, in a package-private
+  directory only this package can read. Upstream writes those
   files with no `chmod` of its own, so the directory is what protects them. The path is
   derived rather than configurable, so it cannot be pointed at a shared folder.
 - Upgrade wizard option to forget stored sign-ins, for switching Spotify accounts or
   re-acquiring a token that stopped working. The step is skipped when nothing is stored.
 - Config and stored sign-ins survive package upgrades.
-- Tuned defaults so nothing has to be looked up: bitrate 320 (upstream defaults to 160),
-  fixed HTTP/RTP port ranges for firewall rules, and ports chosen to stay clear of
+- Tuned defaults, so nothing has to be looked up. Bitrate 320 where upstream defaults to
+  160, fixed HTTP/RTP port ranges for firewall rules, and ports chosen to stay clear of
   AirConnect on the same NAS.
-- A pre-flight check before starting either binary. It runs the binary once and, if it
+- The package now says why it cannot start, instead of a bare "Failed to start". It runs
+  the binary once before starting it and, if it
   cannot run on this device, puts the real reason into the package log and into Package
   Center instead of a bare "Failed to start" with the cause buried in
   `/var/log/packages/`. It distinguishes a too-old libstdc++ (answer: install the
   `-static` package) from a binary that crashes outright (answer: this device cannot run
   this build), and reports the signal when a binary dies without printing anything.
+
+### Known issues
+
+- **Some older devices cannot run SpotConnect 0.20.8 at all**, and this is upstream rather
+  than packaging. The dynamic builds need `GLIBCXX_3.4.29`, which older DSM releases do
+  not ship; the `-static` builds, which would otherwise solve that, terminate with
+  `SIGSEGV` on startup on kernels below the 4.4.255 they declare. Measured: DS923+
+  (DSM 7.4.1, kernel 4.4.302+) works; DS415+ (DSM 7.1.1, kernel 3.10.108) and RT2600ac
+  (SRM 1.3.2, kernel 4.4.60) fail both ways. Reported as
+  [SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78). The same crash
+  affects AirConnect's static builds on the same hardware, so it is not specific to this
+  project.
+  Upstream has looked at it and has no fix yet, having not changed its build tools.
+- Three smaller upstream issues found while packaging are already fixed in SpotConnect
+  0.20.9. That release is still a pre-release upstream, so this package continues to ship
+  0.20.8 and the behaviour below is what it has today:
+  [#76](https://github.com/philippe44/SpotConnect/issues/76) credential files written
+  world-readable (the package's `0700` directory covers this, and will remain as a second
+  layer), [#77](https://github.com/philippe44/SpotConnect/issues/77) `-t` exiting 1 on
+  success, and [#79](https://github.com/philippe44/SpotConnect/issues/79) the built-in
+  Spotify client credentials being written into generated config files in clear text.
+
+### Internal
+
+Not part of the installed package, so none of this reaches Package Center.
+
 - `tests/validate_elf.py` and `tests/validate_spk.sh`, carried over from
   AirConnect-Synology. `validate_elf.py` was extended to also collect `GLIBCXX_` and
   `CXXABI_` symbol versions, not just `GLIBC_`. That was a real gap rather than a nicety:
@@ -86,28 +125,7 @@ this build at all - see Known issues below.
 - Documentation: README plus `doc/OVERVIEW.md`, `doc/ARCHITECTURES.md`, `doc/CONFIG.md`,
   `doc/TROUBLESHOOTING.md`, `doc/BUILD.md`.
 
-### Known issues
-
-- **Some older devices cannot run SpotConnect 0.20.8 at all**, and this is upstream rather
-  than packaging. The dynamic builds need `GLIBCXX_3.4.29`, which older DSM releases do
-  not ship; the `-static` builds, which would otherwise solve that, terminate with
-  `SIGSEGV` on startup on kernels below the 4.4.255 they declare. Measured: DS923+
-  (DSM 7.4.1, kernel 4.4.302+) works; DS415+ (DSM 7.1.1, kernel 3.10.108) and RT2600ac
-  (SRM 1.3.2, kernel 4.4.60) fail both ways. Reported as
-  [SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78). The same crash
-  affects AirConnect's static builds on the same hardware, so it is not specific to this
-  project.
-  Upstream has looked at it and has no fix yet, having not changed its build tools.
-- Three further upstream reports from the same work, **all fixed in upstream 0.20.9**
-  and verified on real hardware here — but 0.20.9 is still a pre-release upstream, so
-  this package continues to ship 0.20.8 and the behaviour below is what it has today:
-  [#76](https://github.com/philippe44/SpotConnect/issues/76) credential files written
-  world-readable (the package's `0700` directory covers this, and will remain as a second
-  layer), [#77](https://github.com/philippe44/SpotConnect/issues/77) `-t` exiting 1 on
-  success, and [#79](https://github.com/philippe44/SpotConnect/issues/79) the built-in
-  Spotify client credentials being written into generated config files in clear text.
-
-### Notes on things done differently from AirConnect-Synology
+Design notes, where this package deliberately differs from AirConnect-Synology:
 
 - **No shared folder**, not even as an option. Reusable Spotify tokens must not sit in an
   SMB share.

@@ -1,10 +1,24 @@
 # Syno package structure: https://help.synology.com/developer-guide/synology_package/package_structure.html
 VERSION=${RELEASE_VERSION}-$(shell date '+%Y%m%d')
 
+# Pinned upstream release. The tag is what the files are fetched from; the
+# version is what upstream's own CHANGELOG lists its entries under, and the
+# two are not always the same (a pre-release tag like 0.20.9-0 carries
+# version 0.20.9), so the "What's New" text below uses the version.
 UPSTREAM_TAG=$(shell sed -n 's/.*"tag"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' ../../upstream.json)
+UPSTREAM_VERSION=$(shell sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' ../../upstream.json)
+
+# Derived from INFO rather than repeated here: distributor_url is this
+# packaging repo, maintainer_url is upstream. blob/HEAD resolves to each
+# repo's default branch, so no branch name is baked in either.
+PKG_REPO_URL=$(shell sed -n 's/^distributor_url="\(.*\)"$$/\1/p' INFO)
+UPSTREAM_REPO_URL=$(shell sed -n 's/^maintainer_url="\(.*\)"$$/\1/p' INFO)
+PKG_NAME=$(notdir ${PKG_REPO_URL})
+PKG_ID=$(shell sed -n 's/^package="\(.*\)"$$/\1/p' INFO)
+UPSTREAM_NAME=$(notdir ${UPSTREAM_REPO_URL})
 
 LICENSE:
-	curl -s -L https://github.com/philippe44/SpotConnect/raw/${UPSTREAM_TAG}/LICENSE -O
+	curl -s -L ${UPSTREAM_REPO_URL}/raw/${UPSTREAM_TAG}/LICENSE -O
 
 target:
 	mkdir -p target
@@ -13,7 +27,7 @@ dist:
 	mkdir -p dist
 
 target/package.tgz: target
-	$(if ${RELEASE_VERSION},$(info SpotConnect Version: ${RELEASE_VERSION}),$(error Must specify RELEASE_VERSION))
+	$(if ${RELEASE_VERSION},$(info ${UPSTREAM_NAME} Version: ${RELEASE_VERSION}),$(error Must specify RELEASE_VERSION))
 	$(if ${ARCH},$(info Arch: ${ARCH}),$(error Must specify ARCH))
 	cp bin/spotupnp-linux-${ARCH} target/spotupnp
 	chmod +x target/spotupnp
@@ -45,16 +59,16 @@ target/conf: target
 # Pinned tag, not master: a package must never ship a LICENSE/CHANGELOG that
 # describes a different build than the binaries it contains.
 target/LICENSE: target
-	curl -s -L https://github.com/philippe44/SpotConnect/raw/${UPSTREAM_TAG}/LICENSE -o target/LICENSE
+	curl -s -L ${UPSTREAM_REPO_URL}/raw/${UPSTREAM_TAG}/LICENSE -o target/LICENSE
 
 target/CHANGELOG: target
-	curl -s -L https://github.com/philippe44/SpotConnect/raw/${UPSTREAM_TAG}/CHANGELOG -o target/CHANGELOG
+	curl -s -L ${UPSTREAM_REPO_URL}/raw/${UPSTREAM_TAG}/CHANGELOG -o target/CHANGELOG
 
 target/PACKAGE_ICON.PNG: target
 	cp PACKAGE_ICON.PNG target/PACKAGE_ICON.PNG
 	cp PACKAGE_ICON_256.PNG target/PACKAGE_ICON_256.PNG
 
-target/INFO: target
+target/INFO: target target/CHANGELOG
 	$(if ${INFO_ARCH},$(info INFO_ARCH: ${INFO_ARCH}),$(error Must specify INFO_ARCH))
 	$(if ${INFO_FIRMWARE},$(info INFO_FIRMWARE: ${INFO_FIRMWARE}),$(error Must specify INFO_FIRMWARE))
 	cp INFO target/INFO
@@ -62,11 +76,17 @@ target/INFO: target
 	sed -i.bak -e 's/#INFO_ARCH#/${INFO_ARCH}/' target/INFO
 	sed -i.bak -e 's/#INFO_FIRMWARE#/${INFO_FIRMWARE}/' target/INFO
 	rm target/INFO.bak
+	$(if ${PKG_REPO_URL},,$(error INFO has no distributor_url))
+	$(if ${UPSTREAM_REPO_URL},,$(error INFO has no maintainer_url))
+	printf 'changelog="%s"\n' "$$(./info_changelog.sh \
+		${PKG_NAME} ../../CHANGELOG.md ${PKG_REPO_URL}/blob/HEAD/CHANGELOG.md \
+		${UPSTREAM_NAME} target/CHANGELOG ${UPSTREAM_REPO_URL}/blob/HEAD/CHANGELOG \
+		${UPSTREAM_VERSION})" >> target/INFO
 
-dist/SpotConnect-dsm7-${ARCH}-${VERSION}.spk: target/package.tgz target/scripts target/WIZARD_UIFILES target/conf target/LICENSE target/CHANGELOG target/INFO target/PACKAGE_ICON.PNG dist
+dist/${PKG_ID}-dsm7-${ARCH}-${VERSION}.spk: target/package.tgz target/scripts target/WIZARD_UIFILES target/conf target/LICENSE target/CHANGELOG target/INFO target/PACKAGE_ICON.PNG dist
 	$(if ${ARCH},$(info dist - Arch: ${ARCH}),$(error dist - Must specify ARCH))
-	cd target && tar -cf SpotConnect-dsm7-${ARCH}-${VERSION}.spk *
-	mv target/SpotConnect-dsm7-${ARCH}-${VERSION}.spk dist/
+	cd target && tar -cf ${PKG_ID}-dsm7-${ARCH}-${VERSION}.spk *
+	mv target/${PKG_ID}-dsm7-${ARCH}-${VERSION}.spk dist/
 
 # Platform lists verified against SynoCommunity's spksrc
 # (mk/spksrc.common/archs.mk) on 2026-09-17. Re-verify before any release
@@ -154,7 +174,7 @@ x86_64-static:
 	@true
 
 .PHONY: build
-build: ${ARCH} dist/SpotConnect-dsm7-${ARCH}-${VERSION}.spk
+build: ${ARCH} dist/${PKG_ID}-dsm7-${ARCH}-${VERSION}.spk
 
 .PHONY: clean
 clean:
@@ -174,5 +194,5 @@ build-all: clean-dist
 
 .PHONY: shellcheck
 shellcheck:
-	shellcheck -s sh scripts/* WIZARD_UIFILES/*
+	shellcheck -s sh scripts/* info_changelog.sh WIZARD_UIFILES/*
 	shellcheck -s bash build.sh fetch-libstdcxx.sh
