@@ -36,6 +36,17 @@ is left out of that text like any other subsection.
 
 ### Internal
 
+- `doc/CONVENTIONS.md` records where this package deliberately departs from
+  AirConnect-Synology, whose own `doc/CONVENTIONS.md` describes the conventions the two
+  share. The design notes that used to sit at the bottom of this file moved there, so the
+  information exists in one place.
+- The package version is now read from `upstream.json`'s `version` field instead of being
+  passed in as the upstream tag. Both are the same string today, but upstream publishes
+  pre-release tags such as `0.20.9-0` that carry version `0.20.9`, and the release tag was
+  already built from `version` - so a release would have shipped a git tag and a package
+  version that disagreed.
+- `build.sh` now lists the packages it actually built instead of printing an example
+  filename with the project name, architecture and version typed into it.
 - Package Center now shows a "What's New" text for an update, generated at build time by
   `src/dsm7/info_changelog.sh` from the newest released section of this file plus
   upstream's entries for the bundled version. Taken over unchanged from
@@ -125,16 +136,6 @@ Not part of the installed package, so none of this reaches Package Center.
 - Documentation: README plus `doc/OVERVIEW.md`, `doc/ARCHITECTURES.md`, `doc/CONFIG.md`,
   `doc/TROUBLESHOOTING.md`, `doc/BUILD.md`.
 
-Design notes, where this package deliberately differs from AirConnect-Synology:
-
-- **No shared folder**, not even as an option. Reusable Spotify tokens must not sit in an
-  SMB share.
-- **No username/password option**, although upstream offers `-U`/`-P`. Anything on a
-  command line is readable by every local user through `ps`.
-- **Separate command lines per binary.** `-l` means flow mode in `spotupnp` but Apple TV
-  pairing in `spotraop`; `-b` takes a port in one and not the other; `-g` exists in one
-  only. Sharing an argument builder between them would be a real bug, not untidiness.
-- **Process lookup determines the `ps` invocation and its PID column together**, and
-  prefers `ps w` over bare `ps` on BusyBox. Both were found the hard way in the sibling
-  project — see its PR #237.
-- **No DSM 5/6 line.** New package, no existing users to keep on an older branch.
+Where this package deliberately differs from AirConnect-Synology — no shared folder, no
+username/password option, a separate command line per binary, no DSM 5/6 line — is
+recorded in [doc/CONVENTIONS.md](doc/CONVENTIONS.md), with the reason for each.

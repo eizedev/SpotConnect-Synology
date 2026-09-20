@@ -32,5 +32,9 @@ rm -r -f target
 echo
 echo "[$(date +%Y-%m-%d" "%H:%M:%S)] #### Build complete, packages are in the dist directory"
 
-echo "To install a package on a Synology x86_64 device from the command line:"
-echo "sudo synopkg install dist/SpotConnect-dsm7-x86_64-<version>.spk"
+ls -1 dist/*.spk
+
+echo
+echo "To install one on a Synology device from the command line, pick the package"
+echo "matching your model (see doc/ARCHITECTURES.md):"
+echo "  sudo synopkg install <one of the files above>"

@@ -22,7 +22,7 @@ See [doc/BUILD.md](doc/BUILD.md). In short:
 
 ```sh
 cd src/dsm7
-RELEASE_VERSION=0.20.8 ARCH=x86_64 make clean build
+ARCH=x86_64 make clean build
 make shellcheck
 ../../tests/validate_spk.sh dist/*.spk
 ```
@@ -32,6 +32,11 @@ you is whether the thing actually works, which is why real-hardware testing is c
 separately in the PR template.
 
 ## Conventions
+
+Packaging conventions are shared with the sibling project
+[AirConnect-Synology](https://github.com/eizedev/AirConnect-Synology/blob/HEAD/doc/CONVENTIONS.md);
+[doc/CONVENTIONS.md](doc/CONVENTIONS.md) records where this repository deliberately
+departs from them, and why. The short version:
 
 - **Conventional Commits**: `feat:`, `fix:`, `docs:`, `ci:`, `build:`, `test:`, `chore:`.
   Scopes used here are `dsm7`, `ci`, `doc`, `pkg`.

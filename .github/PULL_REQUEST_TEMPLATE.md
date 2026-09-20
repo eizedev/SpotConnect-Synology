@@ -14,7 +14,7 @@ DSM and SRM.
 -->
 
 - [ ] `cd src/dsm7 && make shellcheck` passes
-- [ ] Package builds (`RELEASE_VERSION=<v> ARCH=<arch> make clean build`)
+- [ ] Package builds (`ARCH=<arch> make clean build`)
 - [ ] `tests/validate_spk.sh` passes against the built package
 - [ ] Tested on real hardware, or explicitly not (say which)
 - [ ] `CHANGELOG.md` updated, if this changes behaviour users can notice
