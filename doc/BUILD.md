@@ -47,14 +47,14 @@ One architecture:
 
 ```sh
 cd src/dsm7
-RELEASE_VERSION=0.20.8 ARCH=x86_64 make clean build
+ARCH=x86_64 make clean build
 ```
 
 All of them:
 
 ```sh
 cd src/dsm7
-RELEASE_VERSION=0.20.8 ./build.sh
+./build.sh
 ```
 
 Packages land in `src/dsm7/dist/` as

@@ -1,5 +1,4 @@
 # Syno package structure: https://help.synology.com/developer-guide/synology_package/package_structure.html
-VERSION=${RELEASE_VERSION}-$(shell date '+%Y%m%d')
 
 # Pinned upstream release. The tag is what the files are fetched from; the
 # version is what upstream's own CHANGELOG lists its entries under, and the
@@ -7,6 +6,15 @@ VERSION=${RELEASE_VERSION}-$(shell date '+%Y%m%d')
 # version 0.20.9), so the "What's New" text below uses the version.
 UPSTREAM_TAG=$(shell sed -n 's/.*"tag"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' ../../upstream.json)
 UPSTREAM_VERSION=$(shell sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' ../../upstream.json)
+
+# The package version is the upstream version plus the build date, read from
+# the same upstream.json field that upstream-check.yml uses to build the
+# release tag - otherwise the two drift apart the first time upstream ships a
+# tag that is not its version, and a release would carry a git tag and a
+# package version that disagree. RELEASE_VERSION overrides it for a local
+# build of something that is not pinned here.
+PKG_VERSION=$(or ${RELEASE_VERSION},${UPSTREAM_VERSION})
+VERSION=${PKG_VERSION}-$(shell date '+%Y%m%d')
 
 # Derived from INFO rather than repeated here: distributor_url is this
 # packaging repo, maintainer_url is upstream. blob/HEAD resolves to each
@@ -27,7 +35,7 @@ dist:
 	mkdir -p dist
 
 target/package.tgz: target
-	$(if ${RELEASE_VERSION},$(info ${UPSTREAM_NAME} Version: ${RELEASE_VERSION}),$(error Must specify RELEASE_VERSION))
+	$(if ${PKG_VERSION},$(info ${UPSTREAM_NAME} Version: ${PKG_VERSION}),$(error No upstream version - is ../../upstream.json readable? Set RELEASE_VERSION to override))
 	$(if ${ARCH},$(info Arch: ${ARCH}),$(error Must specify ARCH))
 	cp bin/spotupnp-linux-${ARCH} target/spotupnp
 	chmod +x target/spotupnp
