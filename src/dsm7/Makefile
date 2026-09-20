@@ -202,5 +202,7 @@ build-all: clean-dist
 
 .PHONY: shellcheck
 shellcheck:
-	shellcheck -s sh scripts/* info_changelog.sh WIZARD_UIFILES/*
-	shellcheck -s bash build.sh fetch-libstdcxx.sh
+	shellcheck -s sh scripts/* info_changelog.sh build.sh WIZARD_UIFILES/*
+	# fetch-libstdcxx.sh is the one script that genuinely needs bash - see
+	# doc/CONVENTIONS.md. Everything else is POSIX sh, including build.sh.
+	shellcheck -s bash fetch-libstdcxx.sh
