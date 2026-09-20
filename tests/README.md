@@ -3,10 +3,10 @@
 Two validators, both dependency-free so they run in CI without any install
 step. Neither needs a Synology device.
 
-| Script            | Checks                                                                                                                                                                                   |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `validate_elf.py` | Each packaged binary is a well-formed ELF for the architecture it is being shipped as, and reports its interpreter, minimum kernel and highest referenced glibc symbol version.          |
-| `validate_spk.sh` | A built `.spk` has every required member, an `INFO` with no unsubstituted `#PLACEHOLDER#` left in it, executable payload binaries, lifecycle scripts with shebangs, and valid icon PNGs. |
+| Script            | Checks                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `validate_elf.py` | Each packaged binary is a well-formed ELF for the architecture it is being shipped as, and reports its interpreter, minimum kernel and highest referenced glibc symbol version.                                                                                                                                                                                                                                     |
+| `validate_spk.sh` | A built `.spk` has every required member; an `INFO` whose mandatory fields (`package`, `version`, `description`, `arch`, `maintainer`, `os_min_ver`, `changelog`) are all non-empty and free of unsubstituted `#PLACEHOLDER#`s; executable payload binaries; a bundled libstdc++ matching the package's architecture, with its licence, where one is present; lifecycle scripts with shebangs; and valid icon PNGs. |
 
 ## Why these exist
 
@@ -15,6 +15,14 @@ concrete cost: a 2024 release shipped binaries that `release-downloader`
 had silently corrupted while unzipping, and nothing in CI noticed until
 users reported it (that project's issue #107). `validate_elf.py` alone would
 have caught it, because a corrupted file does not start with the ELF magic.
+
+## The `changelog` field
+
+`changelog` is generated at build time by `src/dsm7/info_changelog.sh` and is what Package
+Center shows as "What's New" next to an available update. It is built from the newest
+released section of this repository's `CHANGELOG.md` plus upstream's entries for the
+bundled version, so an empty or missing one means the build lost that text - which is why
+`validate_spk.sh` treats it as mandatory rather than optional.
 
 ## Usage
 
