@@ -7,7 +7,18 @@ CREDENTIALS_DIR="${SYNOPKG_PKGDEST}/credentials"
 
 echo "[$(date +'%T')] #### Start postupgrade... ####" >>"${LOG}"
 
-cp -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/spotconnect.conf" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" || true
+# preupgrade only lets an update through once the settings are saved, so a
+# restore that fails here is a real fault, not a missing file. Say so rather
+# than leave a package without its settings behind a successful update.
+restore_failed() {
+    MESSAGE="The update could not restore ${1}, so the package is running without its previous settings. Please uninstall the package and install it again."
+    echo "[$(date +'%T')] ${MESSAGE}" >>"${LOG}"
+    echo "${MESSAGE}" >>"${SYNOPKG_TEMP_LOGFILE}"
+    exit 1
+}
+
+cp -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/spotconnect.conf" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" ||
+    restore_failed spotconnect.conf
 
 if [ -d "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" ]; then
     cp -a "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" "${SYNOPKG_PKGDEST}/credentials" 2>>"${LOG}" || true
@@ -15,7 +26,8 @@ fi
 
 for f in config-upnp.xml config-raop.xml; do
     if [ -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/${f}" ]; then
-        cp -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/${f}" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" || true
+        cp -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/${f}" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" ||
+            restore_failed "${f}"
     fi
 done
 

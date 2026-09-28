@@ -5,22 +5,43 @@ LOG="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.log"
 
 echo "[$(date +'%T')] #### Start preupgrade... ####" >>"${LOG}"
 
-# An upgrade replaces the whole package directory, so anything that must
-# survive it has to be parked in SYNOPKG_TEMP_UPGRADE_FOLDER first.
-cp -f "${SYNOPKG_PKGDEST}/spotconnect.conf" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>"${LOG}" || true
+# Stop the update and tell DSM why. DSM shows the message and keeps the
+# installed version.
+refuse() {
+    echo "[$(date +'%T')] $1" >>"${LOG}"
+    echo "$1" >>"${SYNOPKG_TEMP_LOGFILE}"
+    exit 1
+}
 
-# The credential files matter as much as the config here: losing them would
-# quietly drop every speaker back to discovery-only mode, and the user would
-# have to play to each one again from a Spotify app to get them back. -a
-# preserves the restrictive directory mode along the way.
+# An update carries over the settings of the installed package. If they
+# are not there, they cannot be carried over, and guessing them would
+# silently change how the package runs - so refuse, and say what to do.
+if [ ! -f "${SYNOPKG_PKGDEST}/spotconnect.conf" ]; then
+    refuse "Cannot update: the installed ${SYNOPKG_PKGNAME} has no spotconnect.conf, so its settings cannot be carried over. Please uninstall the package and install it again."
+fi
+
+# An upgrade replaces the whole package directory, so anything that must
+# survive it has to be parked in SYNOPKG_TEMP_UPGRADE_FOLDER first. The
+# settings are not recoverable once lost, so a copy that fails stops the
+# update instead of continuing without them.
+cp -f "${SYNOPKG_PKGDEST}/spotconnect.conf" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>"${LOG}" ||
+    refuse "Cannot update: spotconnect.conf could not be saved for the update. The package log has the details."
+
+# Losing the credential files would drop every speaker back to
+# discovery-only mode until the user plays to it once from a Spotify app -
+# annoying, but recoverable, unlike the settings. So a failed copy does not
+# stop the update. -a preserves the restrictive directory mode along the way.
 if [ -d "${SYNOPKG_PKGDEST}/credentials" ]; then
     cp -a "${SYNOPKG_PKGDEST}/credentials" "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" 2>>"${LOG}" || true
 fi
 
-# Custom config.xml files, if the user placed any.
+# The upstream XML configs. start-stop-status creates them, and
+# doc/CONFIG.md tells people to edit them for per-device settings - so they
+# are settings too, and treated like spotconnect.conf.
 for f in config-upnp.xml config-raop.xml; do
     if [ -f "${SYNOPKG_PKGDEST}/${f}" ]; then
-        cp -f "${SYNOPKG_PKGDEST}/${f}" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>"${LOG}" || true
+        cp -f "${SYNOPKG_PKGDEST}/${f}" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>"${LOG}" ||
+            refuse "Cannot update: ${f} could not be saved for the update. The package log has the details."
     fi
 done
 
