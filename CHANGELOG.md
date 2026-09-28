@@ -45,6 +45,14 @@ is left out of that text like any other subsection.
   `config-upnp.xml`/`config-raop.xml` are treated the same way. Stored Spotify sign-ins
   still do not stop an update, because a lost one only means playing to that speaker once
   more ([#12](https://github.com/eizedev/SpotConnect-Synology/issues/12)).
+- **Package Center shows SpotConnect as running whenever it runs, and Stop always works.**
+  Without its config file the package would be shown as stopped while `spotupnp` and
+  `spotraop` kept running, with neither Stop nor Run able to do anything. Only starting
+  needs the config now.
+- **Run after one of the two programs crashed no longer starts the other one twice.**
+  Whatever is still running is stopped first.
+- With both programs switched off in the config, the package is no longer shown as
+  running.
 
 ### Internal
 
@@ -87,6 +95,8 @@ is left out of that text like any other subsection.
   wizard and `postupgrade` against prepared installations in CI: sign-ins kept or
   forgotten, a config predating current keys, and the cases where the update has to stop
   ([#12](https://github.com/eizedev/SpotConnect-Synology/issues/12)).
+- `tests/start_stop_status.sh`, ported from AirConnect-Synology, runs
+  `status`/`stop`/`start` against broken states in CI.
 
 ## [0.20.8-20260917-pre] - 2026-09-17
 

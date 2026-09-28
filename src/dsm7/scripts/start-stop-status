@@ -11,14 +11,18 @@ CONFIG_RAOP="${SYNOPKG_PKGDEST}/config-raop.xml"
 LOG="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.log"
 LOGBACKUP="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.1.log"
 
-if [ ! -f "${SPOTCONNECT_CONFIG}" ]; then
-    echo "[$(date +'%T')] SpotConnect config file does not exist! Please uninstall the package and reinstall it." >>"$LOG"
-    echo "[$(date +'%T')] SpotConnect config file does not exist! Please uninstall the package and reinstall it." >>"$SYNOPKG_TEMP_LOGFILE"
-    exit 150
+# Only starting needs the settings. DSM calls "status" every few seconds
+# and "stop" before every update and uninstall, whatever state the
+# installation is in - so both answer from what is actually running, and
+# work without a config. Otherwise Package Center shows "stopped" while
+# spotupnp/spotraop run, and nothing can stop them.
+CONFIG_MISSING_MESSAGE="SpotConnect config file does not exist! Please uninstall the package and reinstall it."
+CONFIG_LOADED=0
+if [ -f "${SPOTCONNECT_CONFIG}" ]; then
+    # shellcheck source=/dev/null
+    . "${SPOTCONNECT_CONFIG}"
+    CONFIG_LOADED=1
 fi
-
-# shellcheck source=/dev/null
-. "${SPOTCONNECT_CONFIG}"
 
 # pgrep is not available on Synology devices, so process lookup goes through
 # ps - and every part of that invocation had to be measured on real hardware
@@ -357,12 +361,29 @@ stop_spotconnect() {
 
 # Running means: every program that is switched on is up. Anything less is
 # reported as stopped, so a half-running package is never shown as healthy.
+# Without a config nothing says what should run, so what runs is the
+# answer; nothing running and nothing to start from means broken (150),
+# for which Package Center offers Repair.
 spotconnect_status() {
+    ANY_RUNNING=0
+    if proc_running spotupnp || proc_running spotraop; then
+        ANY_RUNNING=1
+    fi
+    if [ "${CONFIG_LOADED}" = 0 ]; then
+        [ "${ANY_RUNNING}" = 1 ] && return 0
+        return 150
+    fi
+    # Both switched off: there is nothing that could be up.
+    if [ "${SPOTUPNP_ENABLED:-0}" != 1 ] && [ "${SPOTRAOP_ENABLED:-0}" != 1 ]; then
+        [ "${ANY_RUNNING}" = 1 ] && return 0
+        return 3
+    fi
+
     NOT_RUNNING=""
-    if [ "${SPOTUPNP_ENABLED}" = 1 ] && ! proc_running spotupnp; then
+    if [ "${SPOTUPNP_ENABLED:-0}" = 1 ] && ! proc_running spotupnp; then
         NOT_RUNNING="${NOT_RUNNING}spotupnp "
     fi
-    if [ "${SPOTRAOP_ENABLED}" = 1 ] && ! proc_running spotraop; then
+    if [ "${SPOTRAOP_ENABLED:-0}" = 1 ] && ! proc_running spotraop; then
         NOT_RUNNING="${NOT_RUNNING}spotraop "
     fi
     if [ -n "${NOT_RUNNING}" ]; then
@@ -374,6 +395,19 @@ spotconnect_status() {
 
 case $1 in
 start)
+    if [ "${CONFIG_LOADED}" = 0 ]; then
+        echo "[$(date +'%T')] ${CONFIG_MISSING_MESSAGE}" >>"$LOG"
+        echo "[$(date +'%T')] ${CONFIG_MISSING_MESSAGE}" >>"$SYNOPKG_TEMP_LOGFILE"
+        exit 150
+    fi
+    # "status" reports the package stopped as soon as one enabled program
+    # is down, so Package Center offers Run while the other one still runs.
+    # Starting over it would run that one twice.
+    get_pid
+    if [ -n "${PID}" ]; then
+        echo "[$(date +'%T')] Stopping what is still running (pid(s): ${PID}) before starting." >>"$LOG"
+        stop_spotconnect || exit 1
+    fi
     echo "[$(date +'%T')] Starting SpotConnect ..." >>"$LOG"
     start_spotconnect
     exit $?
@@ -384,13 +418,17 @@ stop)
     exit $?
     ;;
 status)
-    if spotconnect_status; then
-        echo "[$(date +'%T')] SpotConnect is running"
-        exit 0
-    else
+    STATUS=0
+    spotconnect_status || STATUS=$?
+    case ${STATUS} in
+    0) echo "[$(date +'%T')] SpotConnect is running" ;;
+    150) echo "[$(date +'%T')] ${CONFIG_MISSING_MESSAGE}" ;;
+    *)
         echo "[$(date +'%T')] SpotConnect is not running"
-        exit 3
-    fi
+        STATUS=3
+        ;;
+    esac
+    exit "${STATUS}"
     ;;
 log)
     echo "${LOG}"
