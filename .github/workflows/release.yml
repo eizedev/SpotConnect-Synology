@@ -34,6 +34,13 @@ jobs:
       discussions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Called from upstream-check.yml, the run's own commit is the merge
+          # of the bump PR - before the tag job added this release's
+          # CHANGELOG.md section. Building from it would put the previous
+          # release's "What's New" into INFO. Empty for every other trigger,
+          # which keeps checkout's default (the commit that triggered the run).
+          ref: ${{ inputs.release_tag }}
 
       - name: Determine whether this run should publish a release
         id: release_tag
@@ -208,7 +215,7 @@ jobs:
           body: |
             Packaging changes: see [CHANGELOG.md](https://github.com/eizedev/SpotConnect-Synology/blob/main/CHANGELOG.md).
 
-            Upstream SpotConnect ${{ steps.upstream.outputs.tag }} changes: see the [SpotConnect CHANGELOG](https://github.com/philippe44/SpotConnect/blob/master/CHANGELOG).
+            Upstream SpotConnect ${{ steps.upstream.outputs.version }} changes: see the [SpotConnect CHANGELOG](https://github.com/philippe44/SpotConnect/blob/master/CHANGELOG).
 
             **Which file do I need?** See [doc/ARCHITECTURES.md](https://github.com/eizedev/SpotConnect-Synology/blob/main/doc/ARCHITECTURES.md) - and note that older DSM releases and Synology routers may need the `-static` build, or may not be able to run this version at all.
 

@@ -48,8 +48,10 @@ jobs:
           # Via env rather than interpolated into the curl command line, so
           # the token never shows up in a process listing.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ASSET_PREFIX: SpotConnect-
         run: |
           CURRENT_TAG=$(jq -r .tag upstream.json)
+          CURRENT_VERSION=$(jq -r .version upstream.json)
           LATEST=$(curl -sL -H "Authorization: Bearer ${GH_TOKEN}" \
             "https://api.github.com/repos/philippe44/SpotConnect/releases/latest")
           LATEST_TAG=$(echo "$LATEST" | jq -r .tag_name)
@@ -61,9 +63,9 @@ jobs:
           fi
 
           echo "New upstream release: ${CURRENT_TAG} -> ${LATEST_TAG}"
-          ASSET_URL=$(echo "$LATEST" | jq -r '[.assets[] | select(.name | test("^SpotConnect-.*\\.zip$"))][0].browser_download_url')
+          ASSET_URL=$(echo "$LATEST" | jq -r --arg p "$ASSET_PREFIX" '[.assets[] | select(.name | test("^" + $p + ".*\\.zip$"))][0].browser_download_url')
           if [ -z "$ASSET_URL" ] || [ "$ASSET_URL" = "null" ]; then
-            echo "::error::No SpotConnect-*.zip asset found in the latest upstream release."
+            echo "::error::No ${ASSET_PREFIX}*.zip asset found in the latest upstream release."
             exit 1
           fi
           ASSET_NAME=$(basename "$ASSET_URL")
@@ -79,7 +81,34 @@ jobs:
             | grep -E '^spotupnp-linux-' | sed 's/^spotupnp-linux-//' | sort | tr '\n' ' ')
           rm -f /tmp/upstream.zip
 
-          jq -n --arg version "$LATEST_TAG" --arg tag "$LATEST_TAG" \
+          # The package and our release tag are named after `version`, so it
+          # is taken from the asset name rather than the tag: upstream tags
+          # pre-releases like 0.20.9-0 while the asset (and upstream's
+          # CHANGELOG) say 0.20.9, and the sibling AirConnect once tagged
+          # 1.12.4 as "1.2.4". A tag that is the version plus a -N suffix is
+          # expected here. Anything else that looks off is not fixed silently
+          # but put at the top of the PR, since a version that doesn't sort
+          # above the installed one is never offered as an update by Package
+          # Center.
+          NEW_VERSION=${ASSET_NAME#"$ASSET_PREFIX"}
+          NEW_VERSION=${NEW_VERSION%.zip}
+          NOTICES=""
+          if [ -z "$NEW_VERSION" ]; then
+            NEW_VERSION=$LATEST_TAG
+            NOTICES="${NOTICES}- The asset name \`${ASSET_NAME}\` carries no version, so \`version\` falls back to the tag \`${LATEST_TAG}\`."$'\n'
+          elif [ "$NEW_VERSION" != "$LATEST_TAG" ] && ! [[ "$LATEST_TAG" =~ ^"$NEW_VERSION"-[0-9]+$ ]]; then
+            NOTICES="${NOTICES}- Upstream tagged this release \`${LATEST_TAG}\`, but its asset is \`${ASSET_NAME}\`. \`version\` is \`${NEW_VERSION}\` (the package name), \`tag\` stays \`${LATEST_TAG}\` (where the files come from). Check which one upstream meant."$'\n'
+          fi
+          if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+            NOTICES="${NOTICES}- \`${NEW_VERSION}\` is the version already pinned, only the tag changes. Merging publishes a release with the same version - check whether upstream's contents actually changed."$'\n'
+          elif [ "$(printf '%s\n%s\n' "$CURRENT_VERSION" "$NEW_VERSION" | sort -V | tail -n 1)" != "$NEW_VERSION" ]; then
+            NOTICES="${NOTICES}- \`${NEW_VERSION}\` does not sort above the pinned \`${CURRENT_VERSION}\`. Package Center would not offer it as an update. Fix \`version\` before merging."$'\n'
+          fi
+          if [ -n "$NOTICES" ]; then
+            echo "::warning::Upstream release ${LATEST_TAG} needs a look, see the PR body."
+          fi
+
+          jq -n --arg version "$NEW_VERSION" --arg tag "$LATEST_TAG" \
                 --arg asset "$ASSET_NAME" --arg sha256 "$SHA256" \
             '{version: $version, tag: $tag, asset: $asset, sha256: $sha256}' \
             > upstream.json
@@ -87,8 +116,15 @@ jobs:
           UPSTREAM_NOTES=$(echo "$LATEST" | jq -r '.body // "(no release notes provided upstream)"')
 
           {
+            if [ -n "$NOTICES" ]; then
+              echo "> [!WARNING]"
+              echo "> Check before merging:"
+              echo ">"
+              printf '%s' "$NOTICES" | sed 's/^/> /'
+              echo
+            fi
             echo "Bumps the pinned upstream SpotConnect version from"
-            echo "\`${CURRENT_TAG}\` to \`${LATEST_TAG}\` in \`upstream.json\`."
+            echo "\`${CURRENT_VERSION}\` to \`${NEW_VERSION}\` (upstream tag \`${LATEST_TAG}\`) in \`upstream.json\`."
             echo "The new SHA256 was computed from the downloaded release asset."
             echo
             echo "**This PR does not auto-merge.** Review the upstream changes, then merge"
@@ -112,8 +148,7 @@ jobs:
 
           {
             echo "update_available=true"
-            echo "old_tag=${CURRENT_TAG}"
-            echo "new_tag=${LATEST_TAG}"
+            echo "new_version=${NEW_VERSION}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Open PR with the version bump
@@ -124,8 +159,8 @@ jobs:
           # merged updates the same PR rather than piling up a new one
           # every week.
           branch: upstream-spotconnect-bump
-          title: "chore(upstream): bump SpotConnect to ${{ steps.check.outputs.new_tag }}"
-          commit-message: "chore(upstream): bump pinned SpotConnect to ${{ steps.check.outputs.new_tag }}"
+          title: "chore(upstream): bump SpotConnect to ${{ steps.check.outputs.new_version }}"
+          commit-message: "chore(upstream): bump pinned SpotConnect to ${{ steps.check.outputs.new_version }}"
           body-path: /tmp/pr_body.md
 
   tag:
