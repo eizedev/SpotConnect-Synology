@@ -67,7 +67,10 @@ Upstream SpotConnect publishes pre-release tags such as `0.20.9-0` that carry ve
 `0.20.9`, so here the files are fetched from the **tag**, while the package version and
 the "What's New" text use the **version** — which is what upstream's own `CHANGELOG`
 lists its entries under, and what the release tag is built from. `RELEASE_VERSION`
-overrides the version for a local build; CI does not set it.
+overrides the version for a local build; CI does not set it. The upstream check takes the
+version from the asset name (`SpotConnect-0.20.9.zip`), which carries it without the
+suffix. A tag that is the version plus `-N` is expected; any other mismatch, or a version
+that does not sort above the pinned one, opens the bump pull request with a warning.
 
 **The default branch is `main`**, not `master`. Nothing in the tooling depends on the
 name: changelog links use `blob/HEAD`, which resolves to whichever branch a repository
