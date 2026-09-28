@@ -34,6 +34,12 @@ is left out of that text like any other subsection.
   disagrees with the pin file. Not bundled for `arm` (the only available build predates a
   thread-safety fix in the upstream toolchain), `armv5` or `powerpc` (untested).
 
+### Fixed
+
+- **"What's New" for an automatically published update lists that update's changes.** It
+  would have shown the previous release's instead, because the build ran on the commit
+  before the release's `CHANGELOG.md` section was added.
+
 ### Internal
 
 - `build.sh` is POSIX `sh` again, like its counterpart in AirConnect-Synology, instead of
@@ -66,6 +72,11 @@ is left out of that text like any other subsection.
   variant, and links point at the releases list rather than through `/releases/latest`.
 - A tag ending in `-pre`, `-rc*`, `-beta*` or `-alpha*` now publishes as a GitHub
   pre-release on its own. The first one had to be marked by hand after the fact.
+- The weekly upstream check names the package after the version in the upstream asset
+  name, not the upstream tag, and warns in the bump pull request when the two disagree or
+  the version would not go up
+  ([#13](https://github.com/eizedev/SpotConnect-Synology/issues/13)).
+- The GitHub release text names the upstream version rather than its tag.
 
 ## [0.20.8-20260917-pre] - 2026-09-17
 
