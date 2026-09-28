@@ -39,6 +39,12 @@ is left out of that text like any other subsection.
 - **"What's New" for an automatically published update lists that update's changes.** It
   would have shown the previous release's instead, because the build ran on the commit
   before the release's `CHANGELOG.md` section was added.
+- **An update stops when it cannot carry your settings over, instead of continuing
+  without them.** If `spotconnect.conf` is missing or cannot be saved, DSM shows a message
+  asking for an uninstall and reinstall, and the installed version stays. Edited
+  `config-upnp.xml`/`config-raop.xml` are treated the same way. Stored Spotify sign-ins
+  still do not stop an update, because a lost one only means playing to that speaker once
+  more ([#12](https://github.com/eizedev/SpotConnect-Synology/issues/12)).
 
 ### Internal
 
@@ -77,6 +83,10 @@ is left out of that text like any other subsection.
   the version would not go up
   ([#13](https://github.com/eizedev/SpotConnect-Synology/issues/13)).
 - The GitHub release text names the upstream version rather than its tag.
+- `tests/upgrade_state.sh`, ported from AirConnect-Synology, runs `preupgrade`, the upgrade
+  wizard and `postupgrade` against prepared installations in CI: sign-ins kept or
+  forgotten, a config predating current keys, and the cases where the update has to stop
+  ([#12](https://github.com/eizedev/SpotConnect-Synology/issues/12)).
 
 ## [0.20.8-20260917-pre] - 2026-09-17
 

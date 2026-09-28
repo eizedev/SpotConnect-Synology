@@ -1,12 +1,13 @@
 # Tests
 
-Two validators, both dependency-free so they run in CI without any install
-step. Neither needs a Synology device.
+Two validators and an update simulation, all dependency-free so they run in CI without
+any install step. None needs a Synology device.
 
-| Script            | Checks                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `validate_elf.py` | Each packaged binary is a well-formed ELF for the architecture it is being shipped as, and reports its interpreter, minimum kernel and highest referenced glibc symbol version.                                                                                                                                                                                                                                     |
-| `validate_spk.sh` | A built `.spk` has every required member; an `INFO` whose mandatory fields (`package`, `version`, `description`, `arch`, `maintainer`, `os_min_ver`, `changelog`) are all non-empty and free of unsubstituted `#PLACEHOLDER#`s; executable payload binaries; a bundled libstdc++ matching the package's architecture, with its licence, where one is present; lifecycle scripts with shebangs; and valid icon PNGs. |
+| Script             | Checks                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `validate_elf.py`  | Each packaged binary is a well-formed ELF for the architecture it is being shipped as, and reports its interpreter, minimum kernel and highest referenced glibc symbol version.                                                                                                                                                                                                                                     |
+| `upgrade_state.sh` | What an update does to an existing installation: settings, edited `config-*.xml`, stored Spotify sign-ins and their directory mode, the "forget sign-ins" choice, backfilling keys an older config lacks, and refusing the update when the settings cannot be carried over.                                                                                                                                         |
+| `validate_spk.sh`  | A built `.spk` has every required member; an `INFO` whose mandatory fields (`package`, `version`, `description`, `arch`, `maintainer`, `os_min_ver`, `changelog`) are all non-empty and free of unsubstituted `#PLACEHOLDER#`s; executable payload binaries; a bundled libstdc++ matching the package's architecture, with its licence, where one is present; lifecycle scripts with shebangs; and valid icon PNGs. |
 
 ## Why these exist
 
@@ -49,6 +50,20 @@ device's current DSM patch level rather than on its model, platform name or
 kernel version number - the same kernel/glibc combination that failed for
 users in 2023 ran fine when re-tested later. Treat the value as diagnostic
 output, nothing more.
+
+## `upgrade_state.sh`
+
+Prepares a throwaway installation, sets the `SYNOPKG_*` variables DSM sets, then runs
+`preupgrade`, the upgrade wizard and `postupgrade` against it. Between the two scripts it
+empties the package directory, as DSM does when it swaps in the new package, so anything
+`preupgrade` failed to save shows up as lost.
+
+The keys a fresh install writes are read from `postinst`, so a key added there without a
+backfill in `postupgrade` fails the run. The two scenarios that make a copy fail through
+file permissions are skipped when running as root.
+
+Ported from AirConnect-Synology, whose `doc/CONVENTIONS.md` ("Updates") holds the rule it
+checks. Run it with `sh tests/upgrade_state.sh`; it needs nothing but a POSIX shell.
 
 ## Not covered here
 

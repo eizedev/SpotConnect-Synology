@@ -143,6 +143,13 @@ jobs:
       - name: Run shellcheck
         run: cd "${GITHUB_WORKSPACE}"/src/dsm7 && make shellcheck
 
+      # Runs preupgrade, the upgrade wizard and postupgrade against prepared
+      # installations. An update reaches every installation by itself, so
+      # what it does to existing settings and sign-ins is checked before
+      # anything is built.
+      - name: Check what an update does to existing settings
+        run: sh tests/upgrade_state.sh
+
       # No RELEASE_VERSION here on purpose: the Makefile reads the version
       # from upstream.json, the same field upstream-check.yml uses for the
       # release tag. Passing the tag instead would make the two disagree the
