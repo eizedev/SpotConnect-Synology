@@ -39,6 +39,7 @@ included.
 
 ## Table of contents
 
+- [Do I need this?](#do-i-need-this)
 - [How it works](#how-it-works)
 - [What can I connect?](#what-can-i-connect)
 - [I already have AirConnect — do I need this?](#i-already-have-airconnect--do-i-need-this)
@@ -51,6 +52,23 @@ included.
 - [Building from source](#building-from-source)
 - [License](#license)
 - [Credits](#credits)
+
+## Do I need this?
+
+**Does your speaker already show up in the Spotify app on its own? Then no.** This package
+gives Spotify Connect to speakers that do not have it. It adds nothing to a speaker that
+does.
+
+| Your speaker                                                                                          | Use this package?                                                          |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| No Spotify of its own: an older AV receiver, a DLNA streamer, an AirPort Express, an AirPlay-only box | **Yes.** It becomes a Spotify Connect device.                              |
+| Sonos                                                                                                 | No. Sonos has Spotify Connect built in; `spotupnp` skips Sonos by default. |
+| A current smart speaker, a TV or streamer with Spotify or Google Cast, a game console                 | No. Use what it has built in.                                              |
+
+Built-in Spotify Connect is as good or better wherever it exists: the music keeps playing
+after your phone leaves on any Spotify Connect device, not only on this one, and a built-in
+one can play lossless where the speaker supports it, has no NAS in the audio path and has
+no bridge that can crash. See [Known limitations](#known-limitations).
 
 ## How it works
 
@@ -287,6 +305,13 @@ are not exposed here: [doc/CONFIG.md](doc/CONFIG.md).
   system audio — needs AirConnect instead.
 - **No Chromecast.**
 - **Spotify Premium is probably required** and not yet verified; see the footnote above.
+- **No lossless.** Spotify sends this package at most 320 kbit/s Ogg Vorbis, which the NAS
+  decodes and re-encodes for the speaker (FLAC by default, so nothing further is lost). A
+  speaker with Spotify Connect built in gets what Spotify offers it directly, on Sonos S2
+  up to lossless.
+- **The NAS is in the audio path.** If the package or the NAS stops, so does the music, and
+  `spotupnp` can still crash after days of running
+  ([SpotConnect#83](https://github.com/philippe44/SpotConnect/issues/83)).
 - **The AirPlay device password (`-L` upstream) is obfuscated, not encrypted.** It is
   XOR plus Base64 in the config file. Do not treat it as a secret at rest.
 - **Re-encoding costs CPU** on the NAS, and FLAC costs more than MP3. How much this
