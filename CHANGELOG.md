@@ -15,6 +15,8 @@ is left out of that text like any other subsection.
 
 ## [Unreleased]
 
+## [0.20.11-20261017] - 2026-10-17
+
 First regular release, no longer a pre-release. It ships the upstream fixes the
 pre-release was waiting for.
 
