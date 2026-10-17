@@ -224,6 +224,23 @@ else
 fi
 teardown
 
+# SRM sets no SYNOPKG_TEMP_UPGRADE_FOLDER (measured on SRM 1.3.2). Config
+# and sign-ins still have to arrive, through the /tmp fallback, and the
+# fallback must not be left behind.
+setup
+config_current
+signins_stored
+unset SYNOPKG_TEMP_UPGRADE_FOLDER
+export SYNOPKG_PKGNAME="SpotConnectTest$$"
+fallback="/tmp/${SYNOPKG_PKGNAME}-upgrade"
+cp "$CONFIG" "$WORK/config-before"
+run_upgrade
+expect "SRM (no upgrade folder): config carried over through /tmp" grep -qx 'SYNO_IP="192.168.1.2"' "$CONFIG"
+expect "SRM (no upgrade folder): sign-ins carried over" [ "$(signins_count)" != "0" ]
+expect "SRM (no upgrade folder): /tmp fallback removed" [ ! -e "$fallback" ]
+rm -rf "$fallback"
+teardown
+
 # The config is there but cannot be saved for the update. Needs a user
 # that file permissions apply to, so it is skipped when run as root.
 if [ "$(id -u)" -ne 0 ]; then

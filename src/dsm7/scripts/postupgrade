@@ -2,6 +2,8 @@
 
 SPOTCONNECT_USER="$(echo "${SYNOPKG_PKGNAME}" | awk '{print tolower($0)}')"
 LOG="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.log"
+# See preupgrade.
+UPGRADE_DIR="${SYNOPKG_TEMP_UPGRADE_FOLDER:-/tmp/${SYNOPKG_PKGNAME}-upgrade}"
 SPOTCONNECT_CONFIG="${SYNOPKG_PKGDEST}/spotconnect.conf"
 CREDENTIALS_DIR="${SYNOPKG_PKGDEST}/credentials"
 
@@ -17,16 +19,16 @@ restore_failed() {
     exit 1
 }
 
-cp -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/spotconnect.conf" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" ||
+cp -f "${UPGRADE_DIR}/spotconnect.conf" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" ||
     restore_failed spotconnect.conf
 
-if [ -d "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" ]; then
-    cp -a "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" "${SYNOPKG_PKGDEST}/credentials" 2>>"${LOG}" || true
+if [ -d "${UPGRADE_DIR}/credentials" ]; then
+    cp -a "${UPGRADE_DIR}/credentials" "${SYNOPKG_PKGDEST}/credentials" 2>>"${LOG}" || true
 fi
 
 for f in config-upnp.xml config-raop.xml; do
-    if [ -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/${f}" ]; then
-        cp -f "${SYNOPKG_TEMP_UPGRADE_FOLDER}/${f}" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" ||
+    if [ -f "${UPGRADE_DIR}/${f}" ]; then
+        cp -f "${UPGRADE_DIR}/${f}" "${SYNOPKG_PKGDEST}" 2>>"${LOG}" ||
             restore_failed "${f}"
     fi
 done
@@ -89,6 +91,9 @@ if [ -f "${SPOTCONNECT_CONFIG}" ]; then
         echo "SYNO_IP=\"${DETECTED_IP}\"" >>"${SPOTCONNECT_CONFIG}"
     }
 fi
+
+# DSM cleans up its own upgrade folder; the /tmp fallback is ours to remove.
+[ -z "${SYNOPKG_TEMP_UPGRADE_FOLDER}" ] && rm -rf "${UPGRADE_DIR}"
 
 echo "[$(date +'%T')] #### Done postupgrade ####" >>"${LOG}"
 

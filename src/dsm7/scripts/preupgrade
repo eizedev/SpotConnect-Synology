@@ -2,6 +2,11 @@
 
 SPOTCONNECT_USER="$(echo "${SYNOPKG_PKGNAME}" | awk '{print tolower($0)}')"
 LOG="${SYNOPKG_PKGDEST}/log/${SPOTCONNECT_USER}.log"
+# Where the settings are parked during the update. SRM sets neither
+# SYNOPKG_TEMP_UPGRADE_FOLDER nor SYNOPKG_PKGVAR (measured on SRM 1.3.2);
+# /tmp survives from preupgrade to postupgrade there. Same expression in
+# preupgrade and postupgrade.
+UPGRADE_DIR="${SYNOPKG_TEMP_UPGRADE_FOLDER:-/tmp/${SYNOPKG_PKGNAME}-upgrade}"
 
 echo "[$(date +'%T')] #### Start preupgrade... ####" >>"${LOG}"
 
@@ -21,10 +26,11 @@ if [ ! -f "${SYNOPKG_PKGDEST}/spotconnect.conf" ]; then
 fi
 
 # An upgrade replaces the whole package directory, so anything that must
-# survive it has to be parked in SYNOPKG_TEMP_UPGRADE_FOLDER first. The
+# survive it has to be parked in UPGRADE_DIR first. The
 # settings are not recoverable once lost, so a copy that fails stops the
 # update instead of continuing without them.
-cp -f "${SYNOPKG_PKGDEST}/spotconnect.conf" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>"${LOG}" ||
+{ { [ -n "${SYNOPKG_TEMP_UPGRADE_FOLDER}" ] || [ -d "${UPGRADE_DIR}" ] || mkdir -m 700 "${UPGRADE_DIR}"; } &&
+    cp -f "${SYNOPKG_PKGDEST}/spotconnect.conf" "${UPGRADE_DIR}"; } 2>>"${LOG}" ||
     refuse "Cannot update: spotconnect.conf could not be saved for the update. The package log has the details."
 
 # Losing the credential files would drop every speaker back to
@@ -32,7 +38,7 @@ cp -f "${SYNOPKG_PKGDEST}/spotconnect.conf" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>
 # annoying, but recoverable, unlike the settings. So a failed copy does not
 # stop the update. -a preserves the restrictive directory mode along the way.
 if [ -d "${SYNOPKG_PKGDEST}/credentials" ]; then
-    cp -a "${SYNOPKG_PKGDEST}/credentials" "${SYNOPKG_TEMP_UPGRADE_FOLDER}/credentials" 2>>"${LOG}" || true
+    cp -a "${SYNOPKG_PKGDEST}/credentials" "${UPGRADE_DIR}/credentials" 2>>"${LOG}" || true
 fi
 
 # The upstream XML configs. start-stop-status creates them, and
@@ -40,7 +46,7 @@ fi
 # are settings too, and treated like spotconnect.conf.
 for f in config-upnp.xml config-raop.xml; do
     if [ -f "${SYNOPKG_PKGDEST}/${f}" ]; then
-        cp -f "${SYNOPKG_PKGDEST}/${f}" "${SYNOPKG_TEMP_UPGRADE_FOLDER}" 2>>"${LOG}" ||
+        cp -f "${SYNOPKG_PKGDEST}/${f}" "${UPGRADE_DIR}" 2>>"${LOG}" ||
             refuse "Cannot update: ${f} could not be saved for the update. The package log has the details."
     fi
 done
