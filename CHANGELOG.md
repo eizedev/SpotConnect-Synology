@@ -15,6 +15,13 @@ is left out of that text like any other subsection.
 
 ## [Unreleased]
 
+### Internal
+
+- Settings and stored sign-ins are parked in `/tmp/<package>-upgrade` during an update when
+  the system provides no upgrade folder, as SRM does not; same change as AirConnect-Synology
+  ([AirConnect-Synology#277](https://github.com/eizedev/AirConnect-Synology/issues/277)).
+  No router can run this package yet, so nothing changes for users today.
+
 ### Changed
 
 - **Sonos speakers no longer get a second Spotify Connect entry from `spotupnp`.** They
