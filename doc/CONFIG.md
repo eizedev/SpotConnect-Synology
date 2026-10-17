@@ -65,7 +65,7 @@ token anywhere in the model name.
 - **To skip more**, add tokens: `SPOTUPNP_EXCLUDE_MODELS="Sonos,SoundTouch"`.
 
 This covers `spotupnp` only. Sonos speakers with AirPlay 2 are still bridged by `spotraop`
-and show up under their host name, such as `Sonos-48A6B813028E+`: their AirPlay
+and show up under their host name, such as `Sonos-XXXXXXXXXXXX+`: their AirPlay
 announcement carries no "Sonos" that the filter could match. If all your AirPlay receivers
 are Sonos, switch `spotraop` off (`SPOTRAOP_ENABLED=0`).
 
