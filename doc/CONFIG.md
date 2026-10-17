@@ -26,16 +26,17 @@ either.
 
 ### `spotupnp` (UPnP/DLNA speakers)
 
-| Key                           | Default               | Meaning                                                                                                             |
-| ----------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `SPOTUPNP_ENABLED`            | `1`                   | Run this bridge at all.                                                                                             |
-| `SPOTUPNP_PORT`               | `49300`               | The UPnP port. **Must be above 49152.** Chosen to stay clear of AirConnect's `airupnp`.                             |
-| `SPOTUPNP_PORTRANGE`          | `49301:128`           | `start:count` for the HTTP/RTP ports. Fix these if you want firewall rules; without a range the ports are random.   |
-| `SPOTUPNP_CODEC`              | `flc` _(provisional)_ | What is sent to the player: `mp3[:rate]`, `aac[:rate]`, `vorbis[:rate]`, `opus[:rate]`, `flc[:0..9]`, `wav`, `pcm`. |
-| `SPOTUPNP_CONTENTLENGTH_MODE` | `0` _(provisional)_   | How HTTP length is reported. See below.                                                                             |
-| `SPOTUPNP_RATE`               | `320`                 | Spotify bitrate: `96`, `160` or `320`. Upstream defaults to 160.                                                    |
-| `SPOTUPNP_NAME_FORMAT`        | `%s+`                 | Device naming. C format string, `%s` is the speaker's own name.                                                     |
-| `SPOTUPNP_LOGLEVEL`           | `all=info`            | `<log>=<level>`; logs `all`, `main`, `util`, `upnp`; levels `error`, `warn`, `info`, `debug`, `sdebug`.             |
+| Key                           | Default               | Meaning                                                                                                                  |
+| ----------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `SPOTUPNP_ENABLED`            | `1`                   | Run this bridge at all.                                                                                                  |
+| `SPOTUPNP_PORT`               | `49300`               | The UPnP port. **Must be above 49152.** Chosen to stay clear of AirConnect's `airupnp`.                                  |
+| `SPOTUPNP_PORTRANGE`          | `49301:128`           | `start:count` for the HTTP/RTP ports. Fix these if you want firewall rules; without a range the ports are random.        |
+| `SPOTUPNP_CODEC`              | `flc` _(provisional)_ | What is sent to the player: `mp3[:rate]`, `aac[:rate]`, `vorbis[:rate]`, `opus[:rate]`, `flc[:0..9]`, `wav`, `pcm`.      |
+| `SPOTUPNP_CONTENTLENGTH_MODE` | `0` _(provisional)_   | How HTTP length is reported. See below.                                                                                  |
+| `SPOTUPNP_RATE`               | `320`                 | Spotify bitrate: `96`, `160` or `320`. Upstream defaults to 160.                                                         |
+| `SPOTUPNP_NAME_FORMAT`        | `%s+`                 | Device naming. C format string, `%s` is the speaker's own name.                                                          |
+| `SPOTUPNP_EXCLUDE_MODELS`     | `Sonos`               | Comma-separated tokens; a speaker whose UPnP model name contains one is skipped. Empty bridges every speaker. See below. |
+| `SPOTUPNP_LOGLEVEL`           | `all=info`            | `<log>=<level>`; logs `all`, `main`, `util`, `upnp`; levels `error`, `warn`, `info`, `debug`, `sdebug`.                  |
 
 ### `spotraop` (AirPlay receivers)
 
@@ -50,6 +51,23 @@ either.
 
 Note there is no `SPOTRAOP_PORT`: `spotraop` binds to an address only, with no port of
 its own, unlike `spotupnp`.
+
+## Sonos speakers are skipped by default
+
+Sonos speakers have Spotify Connect built in. Bridging them adds nothing but a second
+entry in the Spotify picker (`Living Room` from the Sonos itself, `Living Room+` from
+this package), so `spotupnp` skips every speaker whose UPnP model name contains `Sonos`
+(`Sonos One SL`, `Sonos Era 100`, `Sonos Play:1` …). The match ignores case and finds the
+token anywhere in the model name.
+
+- **To bridge your Sonos anyway**, for example for the same naming as your other speakers,
+  set `SPOTUPNP_EXCLUDE_MODELS=""` and restart the package.
+- **To skip more**, add tokens: `SPOTUPNP_EXCLUDE_MODELS="Sonos,SoundTouch"`.
+
+This covers `spotupnp` only. Sonos speakers with AirPlay 2 are still bridged by `spotraop`
+and show up under their host name, such as `Sonos-48A6B813028E+`: their AirPlay
+announcement carries no "Sonos" that the filter could match. If all your AirPlay receivers
+are Sonos, switch `spotraop` off (`SPOTRAOP_ENABLED=0`).
 
 ## The two programs are not interchangeable
 

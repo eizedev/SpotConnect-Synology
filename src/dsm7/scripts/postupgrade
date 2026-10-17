@@ -67,6 +67,7 @@ if [ -f "${SPOTCONNECT_CONFIG}" ]; then
     add_default SPOTUPNP_CONTENTLENGTH_MODE 0
     add_default SPOTUPNP_RATE 320
     add_default SPOTUPNP_NAME_FORMAT '"%s+"'
+    add_default SPOTUPNP_EXCLUDE_MODELS '"Sonos"'
     add_default SPOTUPNP_LOGLEVEL '"all=info"'
 
     add_default SPOTRAOP_ENABLED 0

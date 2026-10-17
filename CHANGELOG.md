@@ -15,6 +15,19 @@ is left out of that text like any other subsection.
 
 ## [Unreleased]
 
+### Changed
+
+- **Sonos speakers no longer get a second Spotify Connect entry from `spotupnp`.** They
+  have Spotify Connect built in, so `Living Room+` next to `Living Room` only doubled the
+  list. The new `SPOTUPNP_EXCLUDE_MODELS` key (default `Sonos`) skips them, and an update
+  adds it to your config. To bridge them anyway, set it to `""` and restart the package.
+
+### Known issues
+
+- **Sonos speakers with AirPlay 2 still appear as `Sonos-<id>+`** through `spotraop`, which
+  names them after their host name and cannot recognise them as Sonos. If all your
+  AirPlay receivers are Sonos, switch `spotraop` off (`SPOTRAOP_ENABLED=0`).
+
 ## [0.20.11-20261017] - 2026-10-17
 
 First regular release, no longer a pre-release. It ships the upstream fixes the

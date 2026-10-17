@@ -45,6 +45,10 @@ if [ "$SYNOPKG_PKG_STATUS" = "INSTALL" ]; then
     # PROVISIONAL, pending hardware verification (see doc/): SPOTUPNP_CODEC,
     # SPOTUPNP_CONTENTLENGTH_MODE and the rate of 320 are the values we
     # expect to be right, not values measured on a device yet.
+    # SPOTUPNP_EXCLUDE_MODELS hides Sonos speakers, which have Spotify Connect
+    # built in - bridging them only adds a second "Living Room+" entry next to
+    # the native "Living Room". Same idea as AirConnect-Synology's
+    # FILTER_AIRPLAY2_DEVICES. Empty means no filter.
     # shellcheck disable=SC2154
     cat >>"${SPOTCONNECT_CONFIG}" <<EOF
 SYNO_IP="${pkgwizard_ip}"
@@ -56,6 +60,7 @@ SPOTUPNP_CODEC="flc"
 SPOTUPNP_CONTENTLENGTH_MODE=0
 SPOTUPNP_RATE=320
 SPOTUPNP_NAME_FORMAT="%s+"
+SPOTUPNP_EXCLUDE_MODELS="Sonos"
 SPOTUPNP_LOGLEVEL="all=info"
 
 SPOTRAOP_ENABLED=${SPOTRAOP_ENABLED}
