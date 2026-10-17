@@ -19,7 +19,7 @@ assignees: eizedev
 
 ## Package
 
-- Which `.spk` you installed: `[e.g. SpotConnect-dsm7-x86_64-0.20.8-20260917.spk]`
+- Which `.spk` you installed: `[e.g. SpotConnect-dsm7-x86_64-0.20.11-20261017.spk]`
 - Did you use the `-static` variant? `[yes/no]`
 
 ## Speaker

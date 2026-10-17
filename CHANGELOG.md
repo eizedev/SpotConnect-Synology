@@ -15,6 +15,9 @@ is left out of that text like any other subsection.
 
 ## [Unreleased]
 
+First regular release, no longer a pre-release. It ships the upstream fixes the
+pre-release was waiting for.
+
 ### Added
 
 - **Older DSM releases can now run the package.** SpotConnect needs `GLIBCXX_3.4.29`, which
@@ -33,6 +36,18 @@ is left out of that text like any other subsection.
   matches its package's architecture, and CI fails if a package's library presence
   disagrees with the pin file. Not bundled for `arm` (the only available build predates a
   thread-safety fix in the upstream toolchain), `armv5` or `powerpc` (untested).
+
+### Changed
+
+- **SpotConnect updated from 0.20.8 to 0.20.11.** Upstream now writes stored Spotify
+  sign-ins readable only by their owner
+  ([SpotConnect#76](https://github.com/philippe44/SpotConnect/issues/76)), no longer puts
+  its built-in Spotify client credentials into generated config files
+  ([#79](https://github.com/philippe44/SpotConnect/issues/79)), and fixes a crash of
+  `spotupnp` while reconnecting to Spotify
+  ([#83](https://github.com/philippe44/SpotConnect/issues/83)). The package's `0700`
+  directory for the sign-ins stays as a second layer. Details in the
+  [upstream CHANGELOG](https://github.com/philippe44/SpotConnect/blob/master/CHANGELOG).
 
 ### Fixed
 
@@ -53,6 +68,14 @@ is left out of that text like any other subsection.
   Whatever is still running is stopped first.
 - With both programs switched off in the config, the package is no longer shown as
   running.
+
+### Known issues
+
+- **`spotupnp` can still crash after running for days.** Upstream fixed the race reported
+  in [SpotConnect#83](https://github.com/philippe44/SpotConnect/issues/83) and knows of
+  similar ones in the cspot library it builds on. The package does not restart it by
+  itself; if your UPnP speakers disappear from Spotify, restart the package. See
+  [TROUBLESHOOTING](doc/TROUBLESHOOTING.md#upnp-speakers-disappear-from-spotify-after-a-few-days).
 
 ### Internal
 

@@ -98,7 +98,7 @@ Synology — reports welcome.
 2. **On `arm`, `armv5` or `powerpc`, if it reports a missing `GLIBCXX` version, try the
    `-static` package.** That helps on a device whose kernel is 4.4.255 or newer.
 3. **If the `-static` package dies without a message, this device cannot run SpotConnect
-   0.20.8 yet.** Today that means Synology Routers such as the RT2600ac, and other `arm`
+   yet.** Today that means Synology Routers such as the RT2600ac, and other `arm`
    devices on an older kernel.
 
 You do not have to work this out by reading logs: the package checks before starting and
@@ -117,7 +117,7 @@ which lets DSM offer them on platforms not otherwise listed.
 ## What the binaries require
 
 Measured with [`tests/validate_elf.py`](../tests/validate_elf.py) against SpotConnect
-0.20.8. Every dynamic build has the same requirements; only the machine type and
+0.20.8 and 0.20.11, with identical results. Every dynamic build has the same requirements; only the machine type and
 interpreter differ.
 
 | Package       | Machine        | Linkage | Interpreter                   | Min. kernel | `GLIBC` | `GLIBCXX` |

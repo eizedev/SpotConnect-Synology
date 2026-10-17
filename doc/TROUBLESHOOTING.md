@@ -80,7 +80,7 @@ dynamic package runs with the bundled library. Reported upstream as
 [SpotConnect#78](https://github.com/philippe44/SpotConnect/issues/78) — if you hit this,
 adding your model, DSM version and `uname -r` there is genuinely useful.
 
-If both variants fail this way, SpotConnect 0.20.8 cannot run on that device yet. Check
+If both variants fail this way, SpotConnect cannot run on that device yet. Check
 with:
 
 ```sh
@@ -162,6 +162,24 @@ If you changed either package's ports, make sure the ranges do not overlap, and 
 
 Running both at once is verified on a DS923+ — all four processes coexist on the default
 ports. If you find a conflict the defaults do not avoid, that is worth an issue.
+
+## UPnP speakers disappear from Spotify after a few days
+
+`spotupnp` has probably crashed. This is a known upstream issue: a race in the cspot
+library SpotConnect is built on, while it reconnects to Spotify
+([SpotConnect#83](https://github.com/philippe44/SpotConnect/issues/83)). Upstream fixed the
+case reported there and knows of other, similar ones.
+
+Restart the package to bring the speakers back. The package deliberately does not restart
+a crashed bridge by itself, so that a crash stays visible and can be reported. To confirm
+it was a crash, over SSH:
+
+```sh
+sudo dmesg | grep -i spotupnp     # a "segfault at ..." line means it crashed
+```
+
+If you see it with the current package, adding the date, your NAS model and how long it
+had been running to SpotConnect#83 helps upstream find the remaining cases.
 
 ## Reporting a problem
 
