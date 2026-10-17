@@ -155,9 +155,9 @@ ensure_configs() {
 # "Failed to start" from Package Center and the real reason is buried in
 # /var/log/packages/, which is not a reasonable thing to expect of anyone.
 #
-# The exit status of "-t" is useless here: upstream prints its licence text
-# and then exits 1 in both binaries (ParseArgs returns false, main exits 1).
-# So detect success positively, by the licence text appearing. If it does
+# Success is detected positively, by the licence text appearing, not by the
+# exit status of "-t": SpotConnect 0.20.8 and older print the licence and then
+# exit 1 in both binaries (ParseArgs returns false, main exits 1). If it does
 # not, the loader wrote its error instead, and that error is exactly what
 # the user needs to see.
 # Where a bundled libstdc++ lives, if this package brought one (dynamic
@@ -181,7 +181,7 @@ run_bin() {
 }
 
 # One "-t" run, output in _out and exit status in _rc. Succeeds when the
-# licence text appears - see preflight() for why the exit status is useless.
+# licence text appears - see preflight() for why not by the exit status.
 # Assignment form keeps this safe under "set -e": a non-zero status from the
 # command substitution would otherwise abort the script.
 probe() {

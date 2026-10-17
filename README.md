@@ -18,10 +18,6 @@ Your NAS holds the stream, not your phone — so the music keeps playing when yo
 of the door, and anyone in the house can take over from any Spotify app, Android
 included.
 
-> **Pre-release.** The first release is published as a
-> [pre-release](https://github.com/eizedev/SpotConnect-Synology/releases) rather
-> than a final one, because compatibility beyond one tested device is largely unmeasured.
->
 > **Verified** on a DS923+ (DSM 7.4.1): both bridges start, speakers appear individually
 > in Spotify, playback works, control transfers between devices and between people,
 > playback survives the controlling phone going offline, and it runs alongside AirConnect
@@ -32,12 +28,14 @@ included.
 > and other 32-bit ARM devices on an older kernel cannot run it yet; see
 > [Which package do I need?](#which-package-do-i-need).
 >
+> **Known issue:** `spotupnp` can crash after running for days, from a race in the cspot
+> library it is built on. Upstream fixed the case reported here and knows of others
+> ([SpotConnect#83](https://github.com/philippe44/SpotConnect/issues/83)). The package does
+> not restart it on its own; restart the package if your UPnP speakers disappear from
+> Spotify.
+>
 > If it works, or does not, on a device not listed above, saying so in an issue is the
 > single most useful thing you can contribute right now.
->
-> A final release follows once upstream publishes 0.20.9 — it carries three fixes that
-> came out of packaging this, and building a final package against an upstream
-> pre-release would be the wrong way round.
 
 ## Table of contents
 
@@ -238,16 +236,10 @@ or from home automation. Without stored tokens the speaker only appears while a 
 app discovers it locally.
 
 The tokens are written to a package-private directory with mode `0700`, owned by the
-unprivileged `spotconnect` user the daemons run as. This matters: upstream writes those
-files with a plain `fopen` and no `chmod`, so they land world-readable. The directory is
-what protects them, which is also why its location is fixed rather than configurable — a
-configurable path invites pointing it at a shared folder, which is the one place they
-must never be.
-
-Upstream fixed this in 0.20.9, which writes the files `0600` itself
-([#76](https://github.com/philippe44/SpotConnect/issues/76), confirmed on hardware). This
-package still ships 0.20.8, so the directory is doing the work today — and it will keep
-doing it after the update, as a second layer rather than the only one.
+unprivileged `spotconnect` user the daemons run as. Upstream writes each file `0600`
+([#76](https://github.com/philippe44/SpotConnect/issues/76)); the directory is a second
+layer, and the reason its location is fixed rather than configurable — a configurable
+path invites pointing it at a shared folder, which is the one place they must never be.
 
 **To sign in again** — after switching Spotify accounts, or if a speaker stops responding
 — discard the stored token and let a fresh one be issued:

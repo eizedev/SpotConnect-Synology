@@ -7,21 +7,15 @@ than laziness — see [below](#why-the-binaries-are-not-built-here).
 ## Requirements
 
 - `make`, `curl`, `tar`, GNU coreutils
+- `jq`, for reading the pinned release out of `upstream.json`
 - `shellcheck` for the lint target
 - Python 3 for the ELF validator
 
 ## Getting the binaries
 
-The pinned upstream release is recorded in [`upstream.json`](../upstream.json):
-
-```json
-{
-  "version": "0.20.8",
-  "tag": "0.20.8",
-  "asset": "SpotConnect-0.20.8.zip",
-  "sha256": "fad415ea437365bc1dd639d9255ec141a1d59c6e69f0f01a614cfa53e164f171"
-}
-```
+The pinned upstream release is recorded in [`upstream.json`](../upstream.json): `tag` is
+the release the files come from, `asset` the zip in it, and `sha256` its checksum. The
+commands below read all three from there, so there is nothing to fill in.
 
 Download that asset from
 [upstream's releases](https://github.com/philippe44/SpotConnect/releases), **verify the
@@ -29,10 +23,12 @@ checksum**, and extract the Linux binaries into `src/dsm7/bin/`:
 
 ```sh
 cd src/dsm7/bin
-curl -L -O https://github.com/philippe44/SpotConnect/releases/download/0.20.8/SpotConnect-0.20.8.zip
-shasum -a 256 SpotConnect-0.20.8.zip   # must match upstream.json
-unzip -o SpotConnect-0.20.8.zip 'spotupnp-linux-*' 'spotraop-linux-*'
-rm SpotConnect-0.20.8.zip
+TAG=$(jq -r .tag ../../../upstream.json)
+ASSET=$(jq -r .asset ../../../upstream.json)
+curl -L -O "https://github.com/philippe44/SpotConnect/releases/download/${TAG}/${ASSET}"
+shasum -a 256 "${ASSET}"   # must match sha256 in upstream.json
+unzip -o "${ASSET}" 'spotupnp-linux-*' 'spotraop-linux-*'
+rm "${ASSET}"
 ```
 
 `src/dsm7/bin/` is git-ignored; binaries are never committed.

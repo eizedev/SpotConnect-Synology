@@ -31,16 +31,11 @@ These are deliberate, documented trade-offs rather than oversights. Reports abou
 are still welcome if you can show the reasoning is wrong.
 
 **Spotify tokens are stored on disk.** Upstream writes `spotupnp-*.json` /
-`spotraop-*.json` containing reusable, device-specific credentials, using a plain
-`fopen(…, "w")` with no `chmod` and no `umask` — so the files themselves are typically
-world-readable. This package cannot change how they are written, so it controls where
-they go: a directory with mode `0700`, owned by the unprivileged `spotconnect` user the
-daemons run as, re-asserted on every start. Anyone with root on the NAS can read them
-regardless; that is inherent.
-
-Upstream fixed the file mode in 0.20.9 ([#76](https://github.com/philippe44/SpotConnect/issues/76)),
-verified on real hardware. This package still ships 0.20.8, so the description above is
-what you get today; the restricted directory stays either way.
+`spotraop-*.json` containing reusable, device-specific credentials, and sets each file to
+`0600` right after creating it ([#76](https://github.com/philippe44/SpotConnect/issues/76)).
+The package adds a second layer by controlling where they go: a directory with mode
+`0700`, owned by the unprivileged `spotconnect` user the daemons run as, re-asserted on
+every start. Anyone with root on the NAS can read them regardless; that is inherent.
 
 These tokens are device credentials issued by Spotify, not account credentials. They
 cannot be used to sign in to the account. That is a reason to store them rather than a
