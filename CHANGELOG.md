@@ -15,13 +15,6 @@ is left out of that text like any other subsection.
 
 ## [Unreleased]
 
-### Internal
-
-- Settings and stored sign-ins are parked in `/tmp/<package>-upgrade` during an update when
-  the system provides no upgrade folder, as SRM does not; same change as AirConnect-Synology
-  ([AirConnect-Synology#277](https://github.com/eizedev/AirConnect-Synology/issues/277)).
-  No router can run this package yet, so nothing changes for users today.
-
 ### Changed
 
 - **Sonos speakers no longer get a second Spotify Connect entry from `spotupnp`.** They
@@ -34,6 +27,13 @@ is left out of that text like any other subsection.
 - **Sonos speakers with AirPlay 2 still appear as `Sonos-<id>+`** through `spotraop`, which
   names them after their host name and cannot recognise them as Sonos. If all your
   AirPlay receivers are Sonos, switch `spotraop` off (`SPOTRAOP_ENABLED=0`).
+
+### Internal
+
+- Settings and stored sign-ins are parked in `/tmp/<package>-upgrade` during an update when
+  the system provides no upgrade folder, as SRM does not; same change as AirConnect-Synology
+  ([AirConnect-Synology#277](https://github.com/eizedev/AirConnect-Synology/issues/277)).
+  No router can run this package yet, so nothing changes for users today.
 
 ## [0.20.11-20261017] - 2026-10-17
 
