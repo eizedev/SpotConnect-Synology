@@ -79,6 +79,12 @@ pre-release was waiting for.
 
 ### Internal
 
+- A merged pull request that changes `upstream.json` without changing the upstream version
+  or checksum - such as a fix for an upstream tag that moved - updates the pin without
+  publishing a release, as in AirConnect-Synology
+  ([AirConnect-Synology#271](https://github.com/eizedev/AirConnect-Synology/issues/271)).
+  The upstream bump pull request says when only the tag changes and when the pinned tag
+  has no release any more.
 - `build.sh` is POSIX `sh` again, like its counterpart in AirConnect-Synology, instead of
   being declared and checked as bash although it uses no bash features. That leaves
   `fetch-libstdcxx.sh` as the only bash script, which `doc/CONVENTIONS.md` now records
