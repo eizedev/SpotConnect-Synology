@@ -15,26 +15,6 @@ is left out of that text like any other subsection.
 
 ## [Unreleased]
 
-### Changed
-
-- **Sonos speakers no longer get a second Spotify Connect entry from `spotupnp`.** They
-  have Spotify Connect built in, so `Living Room+` next to `Living Room` only doubled the
-  list. The new `SPOTUPNP_EXCLUDE_MODELS` key (default `Sonos`) skips them, and an update
-  adds it to your config. To bridge them anyway, set it to `""` and restart the package.
-
-### Known issues
-
-- **Sonos speakers with AirPlay 2 still appear as `Sonos-<id>+`** through `spotraop`, which
-  names them after their host name and cannot recognise them as Sonos. If all your
-  AirPlay receivers are Sonos, switch `spotraop` off (`SPOTRAOP_ENABLED=0`).
-
-### Internal
-
-- Settings and stored sign-ins are parked in `/tmp/<package>-upgrade` during an update when
-  the system provides no upgrade folder, as SRM does not; same change as AirConnect-Synology
-  ([AirConnect-Synology#277](https://github.com/eizedev/AirConnect-Synology/issues/277)).
-  No router can run this package yet, so nothing changes for users today.
-
 ## [0.20.11-20261017] - 2026-10-17
 
 First regular release, no longer a pre-release. It ships the upstream fixes the
@@ -71,6 +51,11 @@ pre-release was waiting for.
   directory for the sign-ins stays as a second layer. Details in the
   [upstream CHANGELOG](https://github.com/philippe44/SpotConnect/blob/master/CHANGELOG).
 
+- **Sonos speakers no longer get a second Spotify Connect entry from `spotupnp`.** They
+  have Spotify Connect built in, so `Living Room+` next to `Living Room` only doubled the
+  list. The new `SPOTUPNP_EXCLUDE_MODELS` key (default `Sonos`) skips them, and an update
+  adds it to your config. To bridge them anyway, set it to `""` and restart the package.
+
 ### Fixed
 
 - **"What's New" for an automatically published update lists that update's changes.** It
@@ -98,6 +83,10 @@ pre-release was waiting for.
   similar ones in the cspot library it builds on. The package does not restart it by
   itself; if your UPnP speakers disappear from Spotify, restart the package. See
   [TROUBLESHOOTING](doc/TROUBLESHOOTING.md#upnp-speakers-disappear-from-spotify-after-a-few-days).
+
+- **Sonos speakers with AirPlay 2 still appear as `Sonos-<id>+`** through `spotraop`, which
+  names them after their host name and cannot recognise them as Sonos. If all your
+  AirPlay receivers are Sonos, switch `spotraop` off (`SPOTRAOP_ENABLED=0`).
 
 ### Internal
 
@@ -148,6 +137,11 @@ pre-release was waiting for.
   ([#12](https://github.com/eizedev/SpotConnect-Synology/issues/12)).
 - `tests/start_stop_status.sh`, ported from AirConnect-Synology, runs
   `status`/`stop`/`start` against broken states in CI.
+
+- Settings and stored sign-ins are parked in `/tmp/<package>-upgrade` during an update when
+  the system provides no upgrade folder, as SRM does not; same change as AirConnect-Synology
+  ([AirConnect-Synology#277](https://github.com/eizedev/AirConnect-Synology/issues/277)).
+  No router can run this package yet, so nothing changes for users today.
 
 ## [0.20.8-20260917-pre] - 2026-09-17
 
