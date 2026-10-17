@@ -142,7 +142,7 @@ default (`SPOTUPNP_EXCLUDE_MODELS="Sonos"`); if you see this for Sonos, check th
 other brands with Spotify built in, add a token from their model name to the same key; see
 [CONFIG.md](CONFIG.md#sonos-speakers-are-skipped-by-default).
 
-**`Sonos-48A6B813028E+` and similar** — `spotraop` bridging a Sonos over AirPlay 2, named
+**`Sonos-XXXXXXXXXXXX+` and similar** — `spotraop` bridging a Sonos over AirPlay 2, named
 after its host name. The Sonos filter cannot catch these. If all your AirPlay receivers are
 Sonos, set `SPOTRAOP_ENABLED=0`.
 
