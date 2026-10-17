@@ -111,11 +111,15 @@ This is the normal case, not an edge case, and the two do different jobs:
 | Chromecast devices                                       | AirConnect (`aircast`)                        |
 | Spotify on a Sonos                                       | Neither — Sonos does Spotify Connect natively |
 
-Each speaker then appears twice in the Spotify picker: once as an AirPlay output
-(`Living Room`) and once as a Spotify Connect device (`Living Room+`). The trailing `+`
-is SpotConnect's upstream default (`-N "%s+"`) and is worth keeping for exactly this
-reason. If you prefer something else, `SPOTUPNP_NAME_FORMAT` and `SPOTRAOP_NAME_FORMAT`
-take any C format string with `%s` for the speaker's name.
+A speaker bridged by both then shows up in two places in the Spotify app on an iPhone:
+under **Bluetooth and AirPlay** as AirConnect's AirPlay output, and in the device list as
+SpotConnect's Spotify Connect device. Both are called `Living Room+`: the trailing `+` is
+the upstream default of both projects (`-N "%s+"`). If you prefer something else,
+`SPOTUPNP_NAME_FORMAT` and `SPOTRAOP_NAME_FORMAT` take any C format string with `%s` for
+the speaker's name.
+
+Sonos speakers are not bridged by `spotupnp` by default, because they have Spotify Connect
+built in; see [CONFIG.md](CONFIG.md#sonos-speakers-are-skipped-by-default).
 
 **Ports.** Both packages run a UPnP stack and both would otherwise want the same default
 port. This package ships defaults that stay out of AirConnect's way:

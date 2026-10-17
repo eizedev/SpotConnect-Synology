@@ -272,6 +272,9 @@ start_spotupnp() {
     if [ -n "${SPOTUPNP_CONTENTLENGTH_MODE:-}" ]; then set -- "$@" -g "${SPOTUPNP_CONTENTLENGTH_MODE}"; fi
     if [ -n "${SPOTUPNP_RATE:-}" ]; then set -- "$@" -r "${SPOTUPNP_RATE}"; fi
     if [ -n "${SPOTUPNP_NAME_FORMAT:-}" ]; then set -- "$@" -N "${SPOTUPNP_NAME_FORMAT}"; fi
+    # -m matches each token as a case-insensitive substring of the player's
+    # UPnP modelName ("Sonos One SL", "Sonos Era 100", ...).
+    if [ -n "${SPOTUPNP_EXCLUDE_MODELS:-}" ]; then set -- "$@" -m "${SPOTUPNP_EXCLUDE_MODELS}"; fi
     if [ "${SPOTCONNECT_CREDENTIALS_ENABLED:-1}" = "1" ]; then set -- "$@" -J "${CREDENTIALS_DIR}"; fi
 
     echo "[$(date +'%T')] Starting spotupnp on ${SYNO_IP}:${SPOTUPNP_PORT}" >>"$LOG"

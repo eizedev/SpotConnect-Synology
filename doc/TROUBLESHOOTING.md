@@ -136,9 +136,19 @@ Note that `-l` means something completely different in `spotupnp` — see
 
 Two different things produce this, and only one of them needs fixing.
 
-**`Living Room` and `Living Room+`** — expected when AirConnect runs on the same network.
-The plain one is the AirPlay target, the one with `+` is the Spotify Connect device. See
-the README on how the two differ.
+**`Living Room` and `Living Room+` in the device list** — the plain one is the speaker's own
+Spotify Connect, the `+` one comes from this package. For Sonos, `spotupnp` skips them by
+default (`SPOTUPNP_EXCLUDE_MODELS="Sonos"`); if you see this for Sonos, check that key. For
+other brands with Spotify built in, add a token from their model name to the same key; see
+[CONFIG.md](CONFIG.md#sonos-speakers-are-skipped-by-default).
+
+**`Sonos-48A6B813028E+` and similar** — `spotraop` bridging a Sonos over AirPlay 2, named
+after its host name. The Sonos filter cannot catch these. If all your AirPlay receivers are
+Sonos, set `SPOTRAOP_ENABLED=0`.
+
+**`Living Room+` once in the device list and once under Bluetooth and AirPlay** — the second
+one is AirConnect's AirPlay output, which uses the same `+` suffix. See the README on how
+the two differ.
 
 **`Living Room+` twice** — SpotConnect is running on two machines on the same network,
 for example two NAS. Each one finds the same speakers and announces its own Spotify Connect

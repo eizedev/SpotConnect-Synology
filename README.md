@@ -60,8 +60,7 @@ included.
    Connect device.
 3. Open Spotify on your phone and tap the device button. **Your speakers are in the list
    — by name, one entry each. Not your NAS: the actual speakers.** They carry a `+`
-   (`Living Room+`), which is how you tell them apart from the same speaker's AirPlay
-   entry if you also run AirConnect.
+   (`Living Room+`), which tells them apart from devices that have Spotify built in.
 4. Pick a song and tap `Living Room+`. Spotify hands the stream to your NAS; the NAS
    decodes it and feeds the Denon. Music plays.
 5. Your phone now just says _Playing on Living Room+_. It is a remote control, nothing
@@ -89,10 +88,10 @@ Two honest exclusions:
 - **No Chromecast.** AirConnect covers Chromecast through its `aircast` binary.
   SpotConnect has no Chromecast counterpart — it ships `spotupnp` and `spotraop`, nothing
   else.
-- **Sonos already does this.** Sonos speakers support Spotify Connect natively. If Sonos
-  is all you own, you probably do not need this package. It still works, and you may want
-  it for consistent naming across a mixed setup, but do not expect it to add something
-  your Sonos cannot already do.
+- **Sonos already does this.** Sonos speakers support Spotify Connect natively, so
+  `spotupnp` skips them by default instead of adding a second entry for each. If Sonos is
+  all you own, you do not need this package. To bridge them anyway, see
+  [CONFIG.md](doc/CONFIG.md#sonos-speakers-are-skipped-by-default).
 
 ## I already have AirConnect — do I need this?
 
@@ -135,10 +134,11 @@ Everything else follows from that:
 **In one line:** AirConnect gets everything to your speaker as long as your Apple device
 stays in the loop. SpotConnect gets only Spotify there — but without your phone.
 
-The two are complementary, and running both is the normal case. Your speaker then appears
-twice: once as an AirPlay target (`Living Room`) and once as a Spotify Connect device
-(`Living Room+`). The trailing `+` is SpotConnect's default naming and is what keeps them
-apart. See [doc/OVERVIEW.md](doc/OVERVIEW.md) for running both on one NAS.
+The two are complementary, and running both is the normal case. On an iPhone your speaker
+then appears twice in Spotify, both times as `Living Room+`: under **Bluetooth and AirPlay**
+as AirConnect's AirPlay output, and in the device list as SpotConnect's Spotify Connect
+device. Pick the one in the device list. See [doc/OVERVIEW.md](doc/OVERVIEW.md) for running
+both on one NAS.
 
 ## Why run this on a NAS?
 
