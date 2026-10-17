@@ -3,6 +3,7 @@ package.tgz
 *.spk
 target/
 dist/
+dist-*/
 src/dsm7/bin/**
 src/dsm7/libstdcxx/
 
