@@ -20,7 +20,8 @@ side a problem falls on, report it here and it will be routed.
 Use GitHub's
 [private vulnerability reporting](https://github.com/eizedev/SpotConnect-Synology/security/advisories/new)
 rather than a public issue. Please include what an attacker would gain, what access they
-need to start with, and the DSM version and model you observed it on.
+need to start with, and the DSM version and model you observed it on. If you cannot use
+GitHub, email `oss@eize.dev` instead.
 
 Expect an initial response within a few days. This is a spare-time project, so please do
 not read silence as dismissal — follow up if you have not heard back within a week.
