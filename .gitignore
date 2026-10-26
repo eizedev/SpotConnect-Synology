@@ -11,4 +11,5 @@ src/dsm7/libstdcxx/
 CLAUDE.md
 CLAUDE.local.md
 AGENTS.md
-.claude/
+.claude/*
+!.claude/settings.json
