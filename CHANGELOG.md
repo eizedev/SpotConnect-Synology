@@ -15,6 +15,13 @@ is left out of that text like any other subsection.
 
 ## [Unreleased]
 
+### Internal
+
+- Issues labelled `deferred` are exempt from the stale bot
+  ([#17](https://github.com/eizedev/SpotConnect-Synology/issues/17)). These are known
+  defects parked on purpose, and the bot would otherwise close them 5 days after marking
+  them stale.
+
 ## [0.20.11-20261017] - 2026-10-17
 
 First regular release, no longer a pre-release. It ships the upstream fixes the
